@@ -9,21 +9,72 @@ type IconMapping = Record<SymbolViewProps["name"], ComponentProps<typeof Materia
 type IconSymbolName = keyof typeof MAPPING;
 
 /**
- * Add your SF Symbols to Material Icons mappings here.
- * - see Material Icons in the [Icons Directory](https://icons.expo.fyi).
- * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
+ * SF Symbols to Material Icons mappings for RTrader app.
  */
 const MAPPING = {
+  // Navigation
   "house.fill": "home",
+  "chart.bar.fill": "bar-chart",
+  "person.3.fill": "group",
+  "trophy.fill": "emoji-events",
+  "ellipsis": "more-horiz",
+  // Sections
+  "star.fill": "star",
+  "book.fill": "menu-book",
+  "brain.head.profile": "psychology",
+  "crown.fill": "workspace-premium",
+  "message.fill": "chat",
+  "magnifyingglass": "search",
+  // Actions
+  "chevron.right": "chevron-right",
+  "chevron.left": "chevron-left",
+  "arrow.right": "arrow-forward",
+  "xmark": "close",
+  "checkmark": "check",
   "paperplane.fill": "send",
   "chevron.left.forwardslash.chevron.right": "code",
-  "chevron.right": "chevron-right",
+  // Content
+  "person.fill": "person",
+  "questionmark.circle.fill": "help",
+  "info.circle.fill": "info",
+  "link": "link",
+  "globe": "language",
+  "bell.fill": "notifications",
+  "heart.fill": "favorite",
+  "eye.fill": "visibility",
+  "lock.fill": "lock",
+  "shield.fill": "security",
+  "flame.fill": "local-fire-department",
+  "bolt.fill": "bolt",
+  "calendar": "calendar-today",
+  "clock.fill": "schedule",
+  "location.fill": "location-on",
+  "photo.fill": "photo",
+  "play.fill": "play-arrow",
+  "pause.fill": "pause",
+  "speaker.wave.2.fill": "volume-up",
+  "arrow.up.right": "open-in-new",
+  "square.and.arrow.up": "share",
+  "doc.fill": "description",
+  "folder.fill": "folder",
+  "tag.fill": "label",
+  "chart.line.uptrend.xyaxis": "trending-up",
+  "chart.line.downtrend.xyaxis": "trending-down",
+  "dollarsign.circle.fill": "monetization-on",
+  "percent": "percent",
+  "waveform": "graphic-eq",
+  "list.bullet": "list",
+  "grid": "grid-view",
+  "slider.horizontal.3": "tune",
+  "arrow.clockwise": "refresh",
+  "checkmark.circle.fill": "check-circle",
+  "exclamationmark.circle.fill": "error",
+  "minus.circle.fill": "remove-circle",
+  "plus.circle.fill": "add-circle",
 } as IconMapping;
 
 /**
  * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
- * This ensures a consistent look across platforms, and optimal resource usage.
- * Icon `name`s are based on SF Symbols and require manual mapping to Material Icons.
  */
 export function IconSymbol({
   name,
