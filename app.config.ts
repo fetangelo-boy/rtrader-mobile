@@ -47,6 +47,12 @@ const config: ExpoConfig = {
   scheme: env.scheme,
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
+  owner: process.env.EXPO_OWNER ?? "rtrader-team",
+  extra: {
+    eas: {
+      projectId: process.env.EAS_PROJECT_ID ?? "PLACEHOLDER_EAS_PROJECT_ID",
+    },
+  },
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
@@ -126,5 +132,11 @@ const config: ExpoConfig = {
     reactCompiler: true,
   },
 };
+
+// Log configuration for debugging
+if (process.env.NODE_ENV === "development" || process.env.DEBUG_CONFIG) {
+  console.log("[Expo Config] owner:", config.owner);
+  console.log("[Expo Config] projectId:", config.extra?.eas?.projectId);
+}
 
 export default config;
