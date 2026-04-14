@@ -32,39 +32,20 @@ export default function TabLayout() {
         },
       }}
     >
+      {/* Чаты */}
       <Tabs.Screen
-        name="index"
+        name="chats"
         options={{
-          title: "Главная",
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="house.fill" color={color} />,
+          title: "Чаты",
+          tabBarIcon: ({ color }) => <IconSymbol size={26} name="message.fill" color={color} />,
         }}
       />
+      {/* Аккаунт / Доступ */}
       <Tabs.Screen
-        name="analytics"
+        name="account"
         options={{
-          title: "Аналитика",
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="chart.bar.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="community"
-        options={{
-          title: "Комьюнити",
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="person.3.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="contests"
-        options={{
-          title: "Конкурсы",
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="trophy.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="more"
-        options={{
-          title: "Ещё",
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="ellipsis" color={color} />,
+          title: "Аккаунт",
+          tabBarIcon: ({ color }) => <IconSymbol size={26} name="person.fill" color={color} />,
         }}
       />
     </Tabs>
