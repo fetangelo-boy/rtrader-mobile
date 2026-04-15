@@ -30,7 +30,7 @@
 - [x] Исправлена ошибка "Unmatched Route": упрощена схема deep linking с manus${timestamp} на rtrader
 - [x] Добавлен маршрут chat/[id] в Stack конфигурацию
 - [x] Исправлена схема deep linking в constants/oauth.ts (c manus${timestamp} на rtrader)
-- [ ] Запущена третья Android сборка с всеми исправлениями
+- [ ] Запущена третья Android сборка (Build ID: 23d5d43d-9da6-4806-91f8-3b481fcf2a2b) с всеми исправлениями
 
 ## In Progress 🔄
 - [ ] Интеграция с backend API для чатов
