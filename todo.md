@@ -58,3 +58,4 @@
 - [ ] Проверить работу reply функции
 - [ ] Проверить работу mute/unmute
 - [x] Добавлен initialRouteName в Stack Navigator для корректной обработки корневого маршрута
+- [ ] Запущена сборка с очисткой кэша (Build ID: 26fa8d69-4d5f-46eb-9381-b51fdbeca552) для пересчёта fingerprint
