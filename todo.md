@@ -57,5 +57,10 @@
 - [ ] Проверить работу отправки сообщений
 - [ ] Проверить работу reply функции
 - [ ] Проверить работу mute/unmute
-- [x] Добавлен initialRouteName в Stack Navigator для корректной обработки корневого маршрута
-- [ ] Запущена сборка с очисткой кэша (Build ID: 26fa8d69-4d5f-46eb-9381-b51fdbeca552) для пересчёта fingerprint
+- [x] Создан app/index.tsx для обработки корневого маршрута (root route handler)
+- [x] Обновлён app/_layout.tsx с initialRouteName="index"
+- [x] Версия приложения обновлена 1.0.0 → 1.0.1 для пересчёта fingerprint
+- [x] Финальная Android сборка (Build ID: a2ba32c8-30e2-4e28-a41f-6216ca3b935c) - Fingerprint: 8549379 - ГОТОВА К УСТАНОВКЕ
+
+## Bug Fixes - FontFaceObserver 🐛
+- [x] Удалена зависимость expo-font (вызывала ошибку FontFaceObserver timeout на Android)
