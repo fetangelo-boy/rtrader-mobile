@@ -21,10 +21,8 @@ const bundleId =
       return /^[a-zA-Z]/.test(segment) ? segment : "x" + segment;
     })
     .join(".") || "space.manus.app";
-// Extract timestamp from bundle ID and prefix with "manus" for deep link scheme
-// e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
-const timestamp = bundleId.split(".").pop()?.replace(/^t/, "") ?? "";
-const schemeFromBundleId = `manus${timestamp}`;
+// Use simple scheme for deep linking
+const schemeFromBundleId = "rtrader";
 
 const env = {
   // App branding - update these values directly (do not use env vars)
@@ -44,13 +42,13 @@ const config: ExpoConfig = {
   version: "1.0.0",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
-  scheme: env.scheme,
+  scheme: "rtrader",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
   owner: process.env.EXPO_OWNER ?? "rtrader-team",
   extra: {
     eas: {
-      projectId: process.env.EAS_PROJECT_ID ?? "PLACEHOLDER_EAS_PROJECT_ID",
+      projectId: process.env.EAS_PROJECT_ID || "9c73e93b-8f34-4e91-98c1-c05d180fa8dd",
     },
   },
   ios: {
@@ -77,7 +75,7 @@ const config: ExpoConfig = {
         autoVerify: true,
         data: [
           {
-            scheme: env.scheme,
+            scheme: "rtrader",
             host: "*",
           },
         ],
