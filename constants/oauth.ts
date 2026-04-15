@@ -1,11 +1,9 @@
 import * as Linking from "expo-linking";
 import * as ReactNative from "react-native";
 
-// Extract scheme from bundle ID (last segment timestamp, prefixed with "manus")
-// e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
-const bundleId = "space.manus.rtrader.mobile.t20260330035026";
-const timestamp = bundleId.split(".").pop()?.replace(/^t/, "") ?? "";
-const schemeFromBundleId = `manus${timestamp}`;
+// Use the same deep linking scheme as app.config.ts
+// Must match the scheme registered in app.config.ts and Android intentFilters
+const schemeFromBundleId = "rtrader";
 
 const env = {
   portal: process.env.EXPO_PUBLIC_OAUTH_PORTAL_URL ?? "",
@@ -48,6 +46,9 @@ export function getApiBaseUrl(): string {
   // Fallback to empty (will use relative URL)
   return "";
 }
+
+// Deep link scheme used for OAuth callbacks and app linking
+export const DEEP_LINK_SCHEME = env.deepLinkScheme;
 
 export const SESSION_TOKEN_KEY = "app_session_token";
 export const USER_INFO_KEY = "manus-runtime-user-info";

@@ -26,6 +26,12 @@
 - [x] Конфигурация EAS Build для iOS и Android
 - [x] Логотип приложения в неоновом стиле
 
+## Bug Fixes & Routing 🔧
+- [x] Исправлена ошибка "Unmatched Route": упрощена схема deep linking с manus${timestamp} на rtrader
+- [x] Добавлен маршрут chat/[id] в Stack конфигурацию
+- [x] Исправлена схема deep linking в constants/oauth.ts (c manus${timestamp} на rtrader)
+- [ ] Запущена третья Android сборка с всеми исправлениями
+
 ## In Progress 🔄
 - [ ] Интеграция с backend API для чатов
 - [ ] Интеграция с backend API для статуса подписки
