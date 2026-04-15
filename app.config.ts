@@ -45,7 +45,7 @@ const config: ExpoConfig = {
   scheme: "rtrader",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
-  owner: process.env.EXPO_OWNER ?? "rtrader-team",
+  owner: process.env.EXPO_OWNER ?? "fedortaneev",
   extra: {
     eas: {
       projectId: process.env.EAS_PROJECT_ID || "9c73e93b-8f34-4e91-98c1-c05d180fa8dd",
