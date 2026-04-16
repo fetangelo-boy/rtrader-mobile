@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Pressable } from "react-native";
+import { View, Text, ScrollView, Pressable, Linking } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { cn } from "@/lib/utils";
@@ -77,6 +77,12 @@ export default function AccountScreen() {
     console.log("Logout clicked");
   };
 
+  const handleSocialLink = (url: string) => {
+    Linking.openURL(url).catch(() => {
+      console.log("Could not open URL:", url);
+    });
+  };
+
   return (
     <ScreenContainer className="p-0">
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
@@ -127,6 +133,58 @@ export default function AccountScreen() {
               <Text className="text-xs text-muted mb-1">Телефон</Text>
               <Text className="text-sm text-foreground">{USER_DATA.phone}</Text>
             </View>
+          </View>
+        </View>
+
+        {/* Социальные сети */}
+        <View className="px-4 py-6 border-b" style={{ borderBottomColor: colors.border }}>
+          <Text className="text-base font-semibold text-foreground mb-4">Следите за нами</Text>
+
+          <View className="flex-row gap-3">
+            <Pressable
+              onPress={() => handleSocialLink("https://t.me/rtrader")}
+              style={({ pressed }) => [
+                {
+                  opacity: pressed ? 0.7 : 1,
+                  backgroundColor: colors.surface,
+                  borderColor: "#0088cc",
+                  borderWidth: 1,
+                },
+                { borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, flex: 1 },
+              ]}
+            >
+              <Text className="text-center font-semibold text-foreground">Telegram</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => handleSocialLink("https://vk.com/rtrader")}
+              style={({ pressed }) => [
+                {
+                  opacity: pressed ? 0.7 : 1,
+                  backgroundColor: colors.surface,
+                  borderColor: "#0077ff",
+                  borderWidth: 1,
+                },
+                { borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, flex: 1 },
+              ]}
+            >
+              <Text className="text-center font-semibold text-foreground">VK</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => handleSocialLink("https://dzen.ru/rtrader")}
+              style={({ pressed }) => [
+                {
+                  opacity: pressed ? 0.7 : 1,
+                  backgroundColor: colors.surface,
+                  borderColor: "#ff0000",
+                  borderWidth: 1,
+                },
+                { borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, flex: 1 },
+              ]}
+            >
+              <Text className="text-center font-semibold text-foreground">Дзен</Text>
+            </Pressable>
           </View>
         </View>
 

@@ -39,16 +39,16 @@ const env = {
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
-  version: "1.0.1",
+  version: "1.0.2",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "rtrader",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
-  owner: process.env.EXPO_OWNER ?? "fedortaneev",
+  owner: "fedortaneev",
   extra: {
     eas: {
-      projectId: process.env.EAS_PROJECT_ID || "9c73e93b-8f34-4e91-98c1-c05d180fa8dd",
+      projectId: process.env.EAS_PROJECT_ID,
     },
   },
   ios: {
