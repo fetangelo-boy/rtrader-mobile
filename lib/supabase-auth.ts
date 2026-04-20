@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { supabase } from "./supabase-client";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
@@ -162,7 +162,7 @@ export async function restoreSession() {
  * Listen to auth state changes
  */
 export function onAuthStateChange(callback: (user: AuthUser | null) => void) {
-  const { data: subscription } = supabase.auth.onAuthStateChange(async (event, session) => {
+  const { data: subscription } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
     const user = session?.user as AuthUser | null;
     callback(user);
 

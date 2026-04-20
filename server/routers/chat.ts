@@ -1,5 +1,5 @@
 import { router, protectedProcedure } from "../_core/trpc";
-import { supabase } from "../../lib/supabase";
+import { getServerSupabase } from "../../lib/supabase";
 import { z } from "zod";
 
 export const chatRouter = router({
@@ -7,6 +7,7 @@ export const chatRouter = router({
   list: protectedProcedure.query(async ({ ctx }: any) => {
     const userId = ctx.supabaseUser?.id;
     if (!userId) throw new Error("Unauthorized");
+    const supabase = getServerSupabase();
 
     const { data: chats, error } = await supabase
       .from("chats")
@@ -39,6 +40,7 @@ export const chatRouter = router({
     .query(async ({ input, ctx }: any) => {
       const userId = ctx.supabaseUser?.id;
       if (!userId) throw new Error("Unauthorized");
+      const supabase = getServerSupabase();
 
       // Check if user is participant
       const { data: participant, error: participantError } = await supabase
@@ -91,6 +93,7 @@ export const chatRouter = router({
     .mutation(async ({ input, ctx }: any) => {
       const userId = ctx.supabaseUser?.id;
       if (!userId) throw new Error("Unauthorized");
+      const supabase = getServerSupabase();
 
       // Check if user is participant
       const { data: participant, error: participantError } = await supabase
@@ -135,6 +138,7 @@ export const chatRouter = router({
     .query(async ({ input, ctx }: any) => {
       const userId = ctx.supabaseUser?.id;
       if (!userId) throw new Error("Unauthorized");
+      const supabase = getServerSupabase();
 
       const { data: settings, error } = await supabase
         .from("chat_settings")
@@ -158,6 +162,7 @@ export const chatRouter = router({
     .mutation(async ({ input, ctx }: any) => {
       const userId = ctx.supabaseUser?.id;
       if (!userId) throw new Error("Unauthorized");
+      const supabase = getServerSupabase();
 
       // Upsert chat settings
       const { data: settings, error } = await supabase

@@ -34,6 +34,9 @@ const env = {
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,
+  // Supabase credentials from environment
+  supabaseUrl: process.env.VITE_SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || "",
+  supabaseAnonKey: process.env.VITE_SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "",
 };
 
 const config: ExpoConfig = {
@@ -50,6 +53,8 @@ const config: ExpoConfig = {
     eas: {
       projectId: process.env.EAS_PROJECT_ID,
     },
+    supabaseUrl: env.supabaseUrl,
+    supabaseAnonKey: env.supabaseAnonKey,
   },
   ios: {
     supportsTablet: true,
