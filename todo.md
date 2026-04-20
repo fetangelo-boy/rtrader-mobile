@@ -68,19 +68,28 @@
 
 
 ## Supabase Backend Integration 🚀
-- [ ] Получить Supabase Access Token
-- [ ] Связать локальный проект с Supabase через CLI (supabase link)
-- [ ] Создать миграции для таблиц (profiles, chats, chat_participants, messages, chat_settings, subscriptions)
-- [ ] Добавить foreign keys и индексы в миграции
-- [ ] Применить миграции (supabase migration up)
-- [ ] Проверить, что все таблицы созданы в Supabase
-- [ ] Создать TRPC процедуры для чатов (chat.list, chat.getMessages, chat.sendMessage)
-- [ ] Создать TRPC процедуры для settings (chat.getSettings, chat.setMute)
-- [ ] Создать TRPC процедуру для подписки (account.getSubscription)
-- [ ] Заменить демо-данные на реальные в chats.tsx
-- [ ] Заменить демо-данные на реальные в chat/[id].tsx
-- [ ] Реализовать Reply функциональность с UI
-- [ ] Реализовать Mute/Unmute с UI
-- [ ] Обновить Account экран с реальным статусом подписки
-- [ ] Протестировать все функции
+- [x] Получить Supabase Access Token
+- [x] Связать локальный проект с Supabase через CLI (supabase link)
+- [x] Создать миграции для таблиц (profiles, chats, chat_participants, messages, chat_settings, subscriptions)
+- [x] Добавить foreign keys и индексы в миграции
+- [x] Применить миграции (supabase migration up)
+- [x] Проверить, что все таблицы созданы в Supabase
+- [x] Создать TRPC процедуры для чатов (chat.list, chat.getMessages, chat.sendMessage)
+- [x] Создать TRPC процедуры для settings (chat.getSettings, chat.setMute)
+- [x] Создать TRPC процедуру для подписки (account.getSubscription)
+- [x] Email авторизация (регистрация, вход, выход, восстановление пароля)
+- [x] Auth redirect логика (неавторизированный -> логин, авторизированный -> чаты)
+
+## MVP Phase 🚀
+- [ ] Обновить seed.sql с 8 реальными чатами (5 интерактивных + 3 инфо-канала)
+- [ ] Добавить тип чата (interactive/info_only) в таблицу chats
+- [ ] Добавить роль пользователя в chat_participants (participant/admin)
+- [ ] Загружать список чатов из Supabase с визуальным индикатором mute
+- [ ] Реализовать Reply функциональность с UI (долгое нажатие)
+- [ ] Реализовать Mute/Unmute с UI и синхронизацией БД
+- [ ] Реализовать прикрепление фото к сообщениям
+- [ ] Обновить Account экран с реальным статусом подписки и кнопками действий
+- [ ] Применить seed.sql через Supabase Dashboard
+- [ ] Провести полный E2E тест (логин -> чаты -> сообщения -> reply -> фото -> mute -> аккаунт -> логаут)
+- [ ] Исправить найденные баги
 - [ ] Закоммитить все изменения в GitHub
