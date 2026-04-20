@@ -65,3 +65,22 @@
 
 ## Bug Fixes - FontFaceObserver 🐛
 - [x] Удалена зависимость expo-font (вызывала ошибку FontFaceObserver timeout на Android)
+
+
+## Supabase Backend Integration 🚀
+- [ ] Получить Supabase Access Token
+- [ ] Связать локальный проект с Supabase через CLI (supabase link)
+- [ ] Создать миграции для таблиц (profiles, chats, chat_participants, messages, chat_settings, subscriptions)
+- [ ] Добавить foreign keys и индексы в миграции
+- [ ] Применить миграции (supabase migration up)
+- [ ] Проверить, что все таблицы созданы в Supabase
+- [ ] Создать TRPC процедуры для чатов (chat.list, chat.getMessages, chat.sendMessage)
+- [ ] Создать TRPC процедуры для settings (chat.getSettings, chat.setMute)
+- [ ] Создать TRPC процедуру для подписки (account.getSubscription)
+- [ ] Заменить демо-данные на реальные в chats.tsx
+- [ ] Заменить демо-данные на реальные в chat/[id].tsx
+- [ ] Реализовать Reply функциональность с UI
+- [ ] Реализовать Mute/Unmute с UI
+- [ ] Обновить Account экран с реальным статусом подписки
+- [ ] Протестировать все функции
+- [ ] Закоммитить все изменения в GitHub
