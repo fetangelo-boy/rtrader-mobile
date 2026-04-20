@@ -1,11 +1,11 @@
-import { router, publicProcedure } from "../_core/trpc";
+import { router, protectedProcedure } from "../_core/trpc";
 import { supabase } from "../../lib/supabase";
 import { z } from "zod";
 
 export const chatRouter = router({
   // Get list of chats for current user
-  list: publicProcedure.query(async ({ ctx }: any) => {
-    const userId = ctx.userId;
+  list: protectedProcedure.query(async ({ ctx }: any) => {
+    const userId = ctx.supabaseUser?.id;
     if (!userId) throw new Error("Unauthorized");
 
     const { data: chats, error } = await supabase
@@ -28,7 +28,7 @@ export const chatRouter = router({
   }),
 
   // Get messages for a specific chat
-  getMessages: publicProcedure
+  getMessages: protectedProcedure
     .input(
       z.object({
         chatId: z.string().uuid(),
@@ -37,7 +37,7 @@ export const chatRouter = router({
       })
     )
     .query(async ({ input, ctx }: any) => {
-      const userId = ctx.userId;
+      const userId = ctx.supabaseUser?.id;
       if (!userId) throw new Error("Unauthorized");
 
       // Check if user is participant
@@ -59,23 +59,28 @@ export const chatRouter = router({
           `
           id,
           text,
-          created_at,
           author_id,
+          created_at,
           reply_to_message_id,
-          profiles:author_id(username, avatar_url),
-          reply_to:reply_to_message_id(text, author_id, profiles:author_id(username))
+          profiles!author_id(username, avatar_url),
+          reply_to:messages!reply_to_message_id(
+            id,
+            text,
+            author_id,
+            profiles!author_id(username)
+          )
         `
         )
         .eq("chat_id", input.chatId)
-        .order("created_at", { ascending: false })
+        .order("created_at", { ascending: true })
         .range(input.offset, input.offset + input.limit - 1);
 
       if (error) throw error;
       return messages || [];
     }),
 
-  // Send a message
-  sendMessage: publicProcedure
+  // Send a message to a chat
+  sendMessage: protectedProcedure
     .input(
       z.object({
         chatId: z.string().uuid(),
@@ -84,7 +89,7 @@ export const chatRouter = router({
       })
     )
     .mutation(async ({ input, ctx }: any) => {
-      const userId = ctx.userId;
+      const userId = ctx.supabaseUser?.id;
       if (!userId) throw new Error("Unauthorized");
 
       // Check if user is participant
@@ -112,10 +117,10 @@ export const chatRouter = router({
           `
           id,
           text,
-          created_at,
           author_id,
+          created_at,
           reply_to_message_id,
-          profiles:author_id(username, avatar_url)
+          profiles!author_id(username, avatar_url)
         `
         )
         .single();
@@ -125,48 +130,47 @@ export const chatRouter = router({
     }),
 
   // Get chat settings (mute status)
-  getSettings: publicProcedure
+  getSettings: protectedProcedure
     .input(z.object({ chatId: z.string().uuid() }))
     .query(async ({ input, ctx }: any) => {
-      const userId = ctx.userId;
+      const userId = ctx.supabaseUser?.id;
       if (!userId) throw new Error("Unauthorized");
 
       const { data: settings, error } = await supabase
         .from("chat_settings")
-        .select("muted, muted_until")
+        .select("*")
         .eq("chat_id", input.chatId)
         .eq("user_id", userId)
-        .maybeSingle();
+        .single();
 
-      if (error) throw error;
-      return settings || { muted: false, muted_until: null };
+      if (error && error.code !== "PGRST116") throw error;
+      return settings || { is_muted: false };
     }),
 
   // Set mute status for a chat
-  setMute: publicProcedure
+  setMute: protectedProcedure
     .input(
       z.object({
         chatId: z.string().uuid(),
-        muted: z.boolean(),
-        mutedUntil: z.string().datetime().optional(),
+        isMuted: z.boolean(),
       })
     )
     .mutation(async ({ input, ctx }: any) => {
-      const userId = ctx.userId;
+      const userId = ctx.supabaseUser?.id;
       if (!userId) throw new Error("Unauthorized");
 
-      const { data: settings, error: upsertError } = await supabase
+      // Upsert chat settings
+      const { data: settings, error } = await supabase
         .from("chat_settings")
         .upsert({
           chat_id: input.chatId,
           user_id: userId,
-          muted: input.muted,
-          muted_until: input.mutedUntil || null,
+          is_muted: input.isMuted,
         })
         .select()
         .single();
 
-      if (upsertError) throw upsertError;
+      if (error) throw error;
       return settings;
     }),
 });

@@ -74,8 +74,7 @@ export default function ChatsScreen() {
       const client = trpc.createClient({} as any);
       await client.chat.setMute.mutate({
         chatId,
-        muted: !currentMuted,
-        mutedUntil: undefined,
+        isMuted: !currentMuted,
       });
       
       setMuteStatus({
