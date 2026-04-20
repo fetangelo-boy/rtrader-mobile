@@ -1,50 +1,99 @@
-import { View, Text, ScrollView, Pressable, FlatList } from "react-native";
+import { View, Text, ScrollView, Pressable, FlatList, ActivityIndicator } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { cn } from "@/lib/utils";
+import { trpc } from "@/lib/trpc";
 
-interface Chat {
+interface ChatItem {
   id: string;
-  name: string;
-  type: "interactive" | "informational";
-  unreadCount?: number;
+  title: string;
+  is_group: boolean;
+  created_at: string;
   isMuted?: boolean;
+  unreadCount?: number;
 }
-
-const CHATS: Chat[] = [
-  // Интерактивные чаты (5)
-  { id: "1", name: "Газ / нефть", type: "interactive", unreadCount: 3 },
-  { id: "2", name: "Продуктовый", type: "interactive", unreadCount: 0 },
-  { id: "3", name: "Металлы", type: "interactive", unreadCount: 5 },
-  { id: "4", name: "Чат", type: "interactive", unreadCount: 1 },
-  { id: "5", name: "Технические вопросы", type: "interactive", unreadCount: 0 },
-  // Информационные чаты (3)
-  { id: "6", name: "Прихожая", type: "informational", unreadCount: 2 },
-  { id: "7", name: "Интрадей и мысли", type: "informational", unreadCount: 0 },
-  { id: "8", name: "Видео-разборы", type: "informational", unreadCount: 0 },
-];
 
 export default function ChatsScreen() {
   const colors = useColors();
   const router = useRouter();
-  const [chats, setChats] = useState<Chat[]>(CHATS);
+  const [chats, setChats] = useState<ChatItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [muteStatus, setMuteStatus] = useState<Record<string, boolean>>({});
+
+  // Fetch chats list
+  const { data: chatsList, isLoading: chatsLoading } = trpc.chat.list.useQuery();
+
+  // Fetch mute settings for each chat
+  useEffect(() => {
+    if (chatsList && chatsList.length > 0) {
+      const fetchMuteSettings = async () => {
+        const muteMap: Record<string, boolean> = {};
+        for (const chat of chatsList) {
+          try {
+            // Use React Query directly through TRPC client
+            const client = trpc.createClient({} as any);
+            const settings = await client.chat.getSettings.query({ chatId: chat.id });
+            muteMap[chat.id] = settings?.muted || false;
+          } catch (error) {
+            console.error(`Failed to fetch settings for chat ${chat.id}:`, error);
+            muteMap[chat.id] = false;
+          }
+        }
+        setMuteStatus(muteMap);
+      };
+      fetchMuteSettings();
+    }
+  }, [chatsList]);
+
+  useEffect(() => {
+    if (chatsList) {
+      const formattedChats: ChatItem[] = chatsList.map((chat: any) => ({
+        id: chat.id,
+        title: chat.title,
+        is_group: chat.is_group,
+        created_at: chat.created_at,
+        isMuted: muteStatus[chat.id] || false,
+        unreadCount: 0, // TODO: calculate from messages
+      }));
+      setChats(formattedChats);
+      setLoading(false);
+    }
+  }, [chatsList, muteStatus]);
 
   const handleChatPress = (chatId: string) => {
     router.push(`/chat/${chatId}`);
   };
 
-  const toggleMute = (chatId: string, e: any) => {
+  const toggleMute = async (chatId: string, e: any) => {
     e.stopPropagation();
-    setChats(
-      chats.map((chat) =>
-        chat.id === chatId ? { ...chat, isMuted: !chat.isMuted } : chat
-      )
-    );
+    const currentMuted = muteStatus[chatId] || false;
+    
+    try {
+      const client = trpc.createClient({} as any);
+      await client.chat.setMute.mutate({
+        chatId,
+        muted: !currentMuted,
+        mutedUntil: undefined,
+      });
+      
+      setMuteStatus({
+        ...muteStatus,
+        [chatId]: !currentMuted,
+      });
+      
+      setChats(
+        chats.map((chat) =>
+          chat.id === chatId ? { ...chat, isMuted: !currentMuted } : chat
+        )
+      );
+    } catch (error) {
+      console.error("Failed to toggle mute:", error);
+    }
   };
 
-  const renderChatItem = ({ item }: { item: Chat }) => (
+  const renderChatItem = ({ item }: { item: ChatItem }) => (
     <Pressable
       onPress={() => handleChatPress(item.id)}
       style={({ pressed }) => [
@@ -64,7 +113,7 @@ export default function ChatsScreen() {
         <View
           className={cn(
             "w-2 h-2 rounded-full mr-3",
-            item.type === "interactive"
+            item.is_group
               ? "bg-cyan-400"
               : "bg-violet-400"
           )}
@@ -76,12 +125,12 @@ export default function ChatsScreen() {
             className="text-base font-semibold text-foreground"
             numberOfLines={1}
           >
-            {item.name}
+            {item.title}
           </Text>
           <Text className="text-xs text-muted mt-1">
-            {item.type === "interactive"
-              ? "Интерактивный"
-              : "Информационный"}
+            {item.is_group
+              ? "Групповой чат"
+              : "Личный чат"}
             {item.isMuted && " • 🔕 Без уведомлений"}
           </Text>
         </View>
@@ -111,6 +160,15 @@ export default function ChatsScreen() {
     </Pressable>
   );
 
+  if (loading || chatsLoading) {
+    return (
+      <ScreenContainer className="items-center justify-center">
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text className="text-muted mt-4">Загрузка чатов...</Text>
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer className="p-0">
       {/* Заголовок */}
@@ -122,13 +180,19 @@ export default function ChatsScreen() {
       </View>
 
       {/* Список чатов */}
-      <FlatList
-        data={chats}
-        renderItem={renderChatItem}
-        keyExtractor={(item) => item.id}
-        scrollEnabled={false}
-        contentContainerStyle={{ flexGrow: 1 }}
-      />
+      {chats.length > 0 ? (
+        <FlatList
+          data={chats}
+          renderItem={renderChatItem}
+          keyExtractor={(item) => item.id}
+          scrollEnabled={false}
+          contentContainerStyle={{ flexGrow: 1 }}
+        />
+      ) : (
+        <View className="flex-1 items-center justify-center">
+          <Text className="text-muted text-center">Нет доступных чатов</Text>
+        </View>
+      )}
 
       {/* Информация */}
       <View className="px-4 py-3 border-t" style={{ borderTopColor: colors.border }}>

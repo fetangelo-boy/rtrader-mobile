@@ -1,109 +1,104 @@
-import { View, Text, ScrollView, Pressable, TextInput, FlatList, Image, Alert } from "react-native";
+import { View, Text, FlatList, Pressable, TextInput, Alert, ActivityIndicator, ScrollView } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { trpc } from "@/lib/trpc";
 
 interface Message {
   id: string;
+  author_id: string;
   author: string;
   text: string;
-  timestamp: string;
+  created_at: string;
+  reply_to_message_id?: string;
   replyTo?: {
     author: string;
     text: string;
   };
-  image?: string;
   isOwn?: boolean;
 }
-
-interface ChatInfo {
-  id: string;
-  name: string;
-  type: "interactive" | "informational";
-}
-
-const CHAT_NAMES: Record<string, ChatInfo> = {
-  "1": { id: "1", name: "Газ / нефть", type: "interactive" },
-  "2": { id: "2", name: "Продуктовый", type: "interactive" },
-  "3": { id: "3", name: "Металлы", type: "interactive" },
-  "4": { id: "4", name: "Чат", type: "interactive" },
-  "5": { id: "5", name: "Технические вопросы", type: "interactive" },
-  "6": { id: "6", name: "Прихожая", type: "informational" },
-  "7": { id: "7", name: "Интрадей и мысли", type: "informational" },
-  "8": { id: "8", name: "Видео-разборы", type: "informational" },
-};
-
-const MOCK_MESSAGES: Message[] = [
-  {
-    id: "1",
-    author: "Иван Трейдер",
-    text: "Привет всем! Как дела на рынке?",
-    timestamp: "10:30",
-  },
-  {
-    id: "2",
-    author: "Мария Аналитик",
-    text: "Рынок в боковике, ждём пробоя",
-    timestamp: "10:35",
-    replyTo: { author: "Иван Трейдер", text: "Привет всем! Как дела на рынке?" },
-  },
-  {
-    id: "3",
-    author: "Вы",
-    text: "Согласен, уровень 150 - ключевой",
-    timestamp: "10:40",
-    isOwn: true,
-  },
-];
 
 export default function ChatDetailScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { id } = useLocalSearchParams();
-  const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
+  const { id: chatId } = useLocalSearchParams();
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const [loading, setLoading] = useState(true);
+  const scrollViewRef = useRef<FlatList>(null);
 
-  const chatInfo = CHAT_NAMES[id as string];
-  const isInteractive = chatInfo?.type === "interactive";
+  // Fetch chat messages
+  const { data: messagesData, isLoading: messagesLoading } = trpc.chat.getMessages.useQuery({
+    chatId: chatId as string,
+    limit: 50,
+    offset: 0,
+  });
 
-  if (!chatInfo) {
-    return (
-      <ScreenContainer className="items-center justify-center">
-        <Text className="text-foreground">Чат не найден</Text>
-      </ScreenContainer>
-    );
-  }
+  useEffect(() => {
+    if (messagesData) {
+      const formattedMessages: Message[] = messagesData.map((msg: any) => {
+        const profile = Array.isArray(msg.profiles) ? msg.profiles[0] : msg.profiles;
+        return {
+        id: msg.id,
+        author_id: msg.author_id,
+        author: profile?.username || "Unknown",
+        text: msg.text,
+        created_at: msg.created_at,
+        reply_to_message_id: msg.reply_to_message_id,
+        replyTo: msg.reply_to ? {
+          author: msg.reply_to.profiles?.username || "Unknown",
+          text: msg.reply_to.text,
+        } : undefined,
+        isOwn: false, // TODO: check if current user
+      };
+      });
+      setMessages(formattedMessages);
+      setLoading(false);
+    }
+  }, [messagesData]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
 
-    const message: Message = {
-      id: String(messages.length + 1),
-      author: "Вы",
-      text: newMessage,
-      timestamp: new Date().toLocaleTimeString("ru-RU", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      replyTo: replyingTo ? { author: replyingTo.author, text: replyingTo.text } : undefined,
-      isOwn: true,
-    };
+    try {
+      const client = trpc.createClient({} as any);
+      const sentMessage = await client.chat.sendMessage.mutate({
+        chatId: chatId as string,
+        text: newMessage,
+        replyToMessageId: replyingTo?.id,
+      });
 
-    setMessages([...messages, message]);
-    setNewMessage("");
-    setReplyingTo(null);
+      if (sentMessage) {
+        const profile = Array.isArray(sentMessage.profiles) ? sentMessage.profiles[0] : sentMessage.profiles;
+      const newMsg: Message = {
+          id: sentMessage.id,
+          author_id: sentMessage.author_id,
+          author: profile?.username || "You",
+          text: sentMessage.text,
+          created_at: sentMessage.created_at,
+          reply_to_message_id: sentMessage.reply_to_message_id,
+          replyTo: replyingTo ? {
+            author: replyingTo.author,
+            text: replyingTo.text,
+          } : undefined,
+          isOwn: true,
+        };
 
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-  };
+        setMessages([...messages, newMsg]);
+        setNewMessage("");
+        setReplyingTo(null);
 
-  const handleAttachPhoto = () => {
-    Alert.alert("Загрузка фото", "Функция загрузки фото будет реализована");
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      Alert.alert("Ошибка", "Не удалось отправить сообщение");
+    }
   };
 
   const handleReply = (message: Message) => {
@@ -156,12 +151,24 @@ export default function ChatDetailScreen() {
             "text-xs mt-1",
             item.isOwn ? "text-background opacity-70" : "text-muted"
           )}>
-            {item.timestamp}
+            {new Date(item.created_at).toLocaleTimeString("ru-RU", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
           </Text>
         </View>
       </View>
     </Pressable>
   );
+
+  if (loading || messagesLoading) {
+    return (
+      <ScreenContainer className="items-center justify-center">
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text className="text-muted mt-4">Загрузка сообщений...</Text>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer className="p-0 flex-1">
@@ -174,9 +181,9 @@ export default function ChatDetailScreen() {
           <Text className="text-2xl">←</Text>
         </Pressable>
         <View className="flex-1 ml-2">
-          <Text className="text-lg font-bold text-foreground">{chatInfo.name}</Text>
+          <Text className="text-lg font-bold text-foreground">Чат</Text>
           <Text className="text-xs text-muted">
-            {isInteractive ? "Интерактивный" : "Информационный"}
+            {messages.length} сообщений
           </Text>
         </View>
         <Pressable className="p-2">
@@ -185,16 +192,22 @@ export default function ChatDetailScreen() {
       </View>
 
       {/* Сообщения */}
-      <FlatList
-        ref={scrollViewRef as any}
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingVertical: 8 }}
-        onContentSizeChange={() =>
-          scrollViewRef.current?.scrollToEnd({ animated: true })
-        }
-      />
+      {messages.length > 0 ? (
+        <FlatList
+          ref={scrollViewRef}
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingVertical: 8 }}
+          onContentSizeChange={() =>
+            scrollViewRef.current?.scrollToEnd({ animated: true })
+          }
+        />
+      ) : (
+        <View className="flex-1 items-center justify-center">
+          <Text className="text-muted">Нет сообщений</Text>
+        </View>
+      )}
 
       {/* Reply цитата */}
       {replyingTo && (
@@ -215,46 +228,32 @@ export default function ChatDetailScreen() {
       )}
 
       {/* Input для сообщения */}
-      {isInteractive ? (
-        <View
-          className="px-4 py-3 border-t flex-row items-center gap-2"
-          style={{ borderTopColor: colors.border }}
+      <View
+        className="px-4 py-3 border-t flex-row items-center gap-2"
+        style={{ borderTopColor: colors.border }}
+      >
+        <TextInput
+          value={newMessage}
+          onChangeText={setNewMessage}
+          placeholder="Введите сообщение..."
+          placeholderTextColor={colors.muted}
+          className="flex-1 px-3 py-2 rounded-lg text-foreground"
+          style={{ backgroundColor: colors.surface, maxHeight: 100 }}
+          multiline
+        />
+        <Pressable
+          onPress={handleSendMessage}
+          disabled={!newMessage.trim()}
+          className="p-2"
         >
-          <Pressable onPress={handleAttachPhoto} className="p-2">
-            <Text className="text-xl">📷</Text>
-          </Pressable>
-          <TextInput
-            value={newMessage}
-            onChangeText={setNewMessage}
-            placeholder="Введите сообщение..."
-            placeholderTextColor={colors.muted}
-            className="flex-1 px-3 py-2 rounded-lg text-foreground"
-            style={{ backgroundColor: colors.surface, maxHeight: 100 }}
-            multiline
-          />
-          <Pressable
-            onPress={handleSendMessage}
-            disabled={!newMessage.trim()}
-            className="p-2"
-          >
-            <Text className={cn(
-              "text-xl",
-              newMessage.trim() ? "opacity-100" : "opacity-30"
-            )}>
-              ✈️
-            </Text>
-          </Pressable>
-        </View>
-      ) : (
-        <View
-          className="px-4 py-3 border-t items-center"
-          style={{ borderTopColor: colors.border }}
-        >
-          <Text className="text-sm text-muted">
-            📖 Это информационный чат. Писать сообщения нельзя.
+          <Text className={cn(
+            "text-xl",
+            newMessage.trim() ? "opacity-100" : "opacity-30"
+          )}>
+            ✈️
           </Text>
-        </View>
-      )}
+        </Pressable>
+      </View>
     </ScreenContainer>
   );
 }

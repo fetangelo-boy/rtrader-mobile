@@ -1,39 +1,28 @@
-import { View, Text, ScrollView, Pressable, Linking } from "react-native";
+import { View, Text, ScrollView, Pressable, Linking, ActivityIndicator } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { cn } from "@/lib/utils";
+import { trpc } from "@/lib/trpc";
+import { useState, useEffect } from "react";
 
-interface UserData {
-  accountId: string;
-  phone: string;
-  email: string;
-  tariff: string;
-  status: "active" | "expiring" | "expired" | "blocked";
-  startDate: string;
-  endDate: string;
+interface Subscription {
+  id: string;
+  plan: string;
+  status: "active" | "canceled" | "trialing" | "expired";
+  current_period_end: string;
+  created_at: string;
 }
-
-// Mock данные - в реальном приложении будут с backend
-const USER_DATA: UserData = {
-  accountId: "ACC-2024-001",
-  phone: "+7 (999) 123-45-67",
-  email: "user@example.com",
-  tariff: "Premium",
-  status: "active",
-  startDate: "2024-01-15",
-  endDate: "2025-01-15",
-};
 
 const getStatusColor = (status: string) => {
   switch (status) {
     case "active":
       return "bg-green-500";
-    case "expiring":
+    case "trialing":
+      return "bg-blue-500";
+    case "canceled":
       return "bg-yellow-500";
     case "expired":
       return "bg-red-500";
-    case "blocked":
-      return "bg-red-600";
     default:
       return "bg-gray-500";
   }
@@ -43,37 +32,60 @@ const getStatusLabel = (status: string) => {
   switch (status) {
     case "active":
       return "Активна";
-    case "expiring":
-      return "Истекает";
+    case "trialing":
+      return "Пробный период";
+    case "canceled":
+      return "Отменена";
     case "expired":
       return "Истекла";
-    case "blocked":
-      return "Заблокирована";
     default:
       return "Неизвестно";
   }
 };
 
+const getPlanLabel = (plan: string) => {
+  switch (plan) {
+    case "free":
+      return "Бесплатный";
+    case "basic":
+      return "Базовый";
+    case "premium":
+      return "Premium";
+    case "vip":
+      return "VIP";
+    default:
+      return plan;
+  }
+};
+
 export default function AccountScreen() {
   const colors = useColors();
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch subscription status
+  const { data: subData, isLoading: subLoading } = trpc.account.getSubscription.useQuery();
+
+  useEffect(() => {
+    if (subData) {
+      setSubscription(subData);
+      setLoading(false);
+    }
+  }, [subData]);
 
   const handleSupport = () => {
-    // TODO: Открыть поддержку
     console.log("Support clicked");
   };
 
   const handleRestoreAccess = () => {
-    // TODO: Восстановить доступ
     console.log("Restore access clicked");
   };
 
   const handleManageSubscription = () => {
-    // TODO: Управление подпиской
     console.log("Manage subscription clicked");
   };
 
   const handleLogout = () => {
-    // TODO: Выход
     console.log("Logout clicked");
   };
 
@@ -82,6 +94,15 @@ export default function AccountScreen() {
       console.log("Could not open URL:", url);
     });
   };
+
+  if (loading || subLoading) {
+    return (
+      <ScreenContainer className="items-center justify-center">
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text className="text-muted mt-4">Загрузка профиля...</Text>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer className="p-0">
@@ -92,49 +113,37 @@ export default function AccountScreen() {
         </View>
 
         {/* Статус подписки */}
-        <View className="px-4 py-6 border-b" style={{ borderBottomColor: colors.border }}>
-          <View className="flex-row items-center mb-4">
-            <View className={cn("w-3 h-3 rounded-full mr-2", getStatusColor(USER_DATA.status))} />
-            <Text className="text-lg font-semibold text-foreground">
-              Подписка: {getStatusLabel(USER_DATA.status)}
-            </Text>
-          </View>
+        {subscription && (
+          <View className="px-4 py-6 border-b" style={{ borderBottomColor: colors.border }}>
+            <View className="flex-row items-center mb-4">
+              <View className={cn("w-3 h-3 rounded-full mr-2", getStatusColor(subscription.status))} />
+              <Text className="text-lg font-semibold text-foreground">
+                Подписка: {getStatusLabel(subscription.status)}
+              </Text>
+            </View>
 
-          <View className="bg-surface rounded-lg p-4 space-y-3">
-            <View className="flex-row justify-between">
-              <Text className="text-sm text-muted">Тариф:</Text>
-              <Text className="text-sm font-semibold text-foreground">{USER_DATA.tariff}</Text>
-            </View>
-            <View className="flex-row justify-between">
-              <Text className="text-sm text-muted">Начало:</Text>
-              <Text className="text-sm font-semibold text-foreground">{USER_DATA.startDate}</Text>
-            </View>
-            <View className="flex-row justify-between">
-              <Text className="text-sm text-muted">Окончание:</Text>
-              <Text className="text-sm font-semibold text-foreground">{USER_DATA.endDate}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Информация об аккаунте */}
-        <View className="px-4 py-6 border-b" style={{ borderBottomColor: colors.border }}>
-          <Text className="text-base font-semibold text-foreground mb-4">Информация об аккаунте</Text>
-
-          <View className="space-y-3">
-            <View>
-              <Text className="text-xs text-muted mb-1">ID аккаунта</Text>
-              <Text className="text-sm font-mono text-foreground">{USER_DATA.accountId}</Text>
-            </View>
-            <View>
-              <Text className="text-xs text-muted mb-1">Email</Text>
-              <Text className="text-sm text-foreground">{USER_DATA.email}</Text>
-            </View>
-            <View>
-              <Text className="text-xs text-muted mb-1">Телефон</Text>
-              <Text className="text-sm text-foreground">{USER_DATA.phone}</Text>
+            <View className="bg-surface rounded-lg p-4 space-y-3">
+              <View className="flex-row justify-between">
+                <Text className="text-sm text-muted">Тариф:</Text>
+                <Text className="text-sm font-semibold text-foreground">
+                  {getPlanLabel(subscription.plan)}
+                </Text>
+              </View>
+              <View className="flex-row justify-between">
+                <Text className="text-sm text-muted">Начало:</Text>
+                <Text className="text-sm font-semibold text-foreground">
+                  {new Date(subscription.created_at).toLocaleDateString("ru-RU")}
+                </Text>
+              </View>
+              <View className="flex-row justify-between">
+                <Text className="text-sm text-muted">Окончание:</Text>
+                <Text className="text-sm font-semibold text-foreground">
+                  {new Date(subscription.current_period_end).toLocaleDateString("ru-RU")}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
+        )}
 
         {/* Социальные сети */}
         <View className="px-4 py-6 border-b" style={{ borderBottomColor: colors.border }}>
@@ -206,26 +215,11 @@ export default function AccountScreen() {
           </Pressable>
 
           <Pressable
-            onPress={handleRestoreAccess}
-            style={({ pressed }) => [
-              {
-                opacity: pressed ? 0.7 : 1,
-                borderColor: colors.primary,
-                borderWidth: 1,
-              },
-              { borderRadius: 8, paddingVertical: 12, paddingHorizontal: 16 },
-            ]}
-          >
-            <Text className="text-center font-semibold text-primary">
-              Восстановить доступ
-            </Text>
-          </Pressable>
-
-          <Pressable
             onPress={handleSupport}
             style={({ pressed }) => [
               {
                 opacity: pressed ? 0.7 : 1,
+                backgroundColor: colors.surface,
                 borderColor: colors.border,
                 borderWidth: 1,
               },
@@ -233,7 +227,7 @@ export default function AccountScreen() {
             ]}
           >
             <Text className="text-center font-semibold text-foreground">
-              Поддержка
+              Служба поддержки
             </Text>
           </Pressable>
 
@@ -242,10 +236,11 @@ export default function AccountScreen() {
             style={({ pressed }) => [
               {
                 opacity: pressed ? 0.7 : 1,
+                backgroundColor: colors.surface,
                 borderColor: colors.error,
                 borderWidth: 1,
               },
-              { borderRadius: 8, paddingVertical: 12, paddingHorizontal: 16, marginTop: 8 },
+              { borderRadius: 8, paddingVertical: 12, paddingHorizontal: 16 },
             ]}
           >
             <Text className="text-center font-semibold text-error">
