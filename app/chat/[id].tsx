@@ -5,6 +5,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
+import { KeyboardAvoidingView, Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface Message {
   id: string;
@@ -74,18 +76,19 @@ export default function ChatDetailScreen() {
     if (messagesData) {
       const formattedMessages: Message[] = messagesData.map((msg: any) => {
         const profile = Array.isArray(msg.profiles) ? msg.profiles[0] : msg.profiles;
+        // Use username if it exists and is not empty, otherwise use fallback
+        const author = (profile?.username && profile.username.trim()) ? profile.username : "Пользователь";
         return {
           id: msg.id,
           user_id: msg.user_id,
-          author: profile?.username || "Пользователь",
+          author: author,
           content: msg.content, // API returns 'content', not 'text'
           created_at: msg.created_at,
           reply_to_message_id: msg.reply_to_message_id,
           replyTo: msg.reply_to ? {
             author: (() => {
-              const rp = Array.isArray(msg.reply_to.profiles) ? msg.reply_to.profiles[0] : msg.reply_to.profiles;
-              return rp?.username || "Пользователь";
-            })(),
+           const rp = Array.isArray(msg.reply_to.profiles) ? msg.reply_to.profiles[0] : msg.reply_to.profiles;
+              return (rp?.username && rp.username.trim()) ? rp.username : "Пользователь";           })(),
             content: msg.reply_to.content,
           } : undefined,
           isOwn: false, // TODO: compare with current user ID from session
@@ -172,7 +175,14 @@ export default function ChatDetailScreen() {
     );
   }
 
+  const insets = useSafeAreaInsets();
+
   return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      style={{ flex: 1 }}
+    >
     <ScreenContainer className="p-0 flex-1">
       {/* Заголовок */}
       <View
@@ -259,5 +269,6 @@ export default function ChatDetailScreen() {
         </Pressable>
       </View>
     </ScreenContainer>
+    </KeyboardAvoidingView>
   );
 }
