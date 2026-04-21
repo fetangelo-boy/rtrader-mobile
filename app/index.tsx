@@ -1,8 +1,9 @@
 import { Redirect } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, View, Platform } from "react-native";
 import { getSupabaseClient } from "@/lib/supabase-client";
 import { useColors } from "@/hooks/use-colors";
+import * as SupabaseAuth from "@/lib/supabase-auth";
 
 /**
  * Root route handler
@@ -16,10 +17,17 @@ export default function RootIndex() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // On native platforms, restore session from SecureStore first
+        if (Platform.OS !== "web") {
+          console.log("[Auth Check] Native platform: restoring session from SecureStore...");
+          await SupabaseAuth.restoreSession();
+        }
+
         const supabase = getSupabaseClient();
         const {
           data: { session },
         } = await supabase.auth.getSession();
+        console.log("[Auth Check] Session check result:", session ? "authenticated" : "not authenticated");
         setIsAuthenticated(!!session);
       } catch (error) {
         console.error("[Auth Check] Error:", error);
