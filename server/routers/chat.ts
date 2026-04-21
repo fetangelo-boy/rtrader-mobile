@@ -1,10 +1,10 @@
-import { router, protectedProcedure } from "../_core/trpc";
+import { router, supabaseProtectedProcedure } from "../_core/trpc";
 import { getServerSupabase } from "../../lib/supabase";
 import { z } from "zod";
 
 export const chatRouter = router({
   // Get list of chats for current user
-  list: protectedProcedure.query(async ({ ctx }: any) => {
+  list: supabaseProtectedProcedure.query(async ({ ctx }: any) => {
     const userId = ctx.supabaseUser?.id;
     if (!userId) throw new Error("Unauthorized");
     const supabase = getServerSupabase();
@@ -14,9 +14,11 @@ export const chatRouter = router({
       .select(
         `
         id,
-        title,
-        is_group,
+        name,
+        description,
+        type,
         created_at,
+        updated_at,
         chat_participants(user_id),
         messages(id, created_at)
       `
@@ -28,11 +30,29 @@ export const chatRouter = router({
     return chats || [];
   }),
 
+  // Get info for a single chat
+  getChatInfo: supabaseProtectedProcedure
+    .input(z.object({ chatId: z.string() }))
+    .query(async ({ input, ctx }: any) => {
+      const userId = ctx.supabaseUser?.id;
+      if (!userId) throw new Error("Unauthorized");
+      const supabase = getServerSupabase();
+
+      const { data: chat, error } = await supabase
+        .from("chats")
+        .select(`id, name, description, type, created_at`)
+        .eq("id", input.chatId)
+        .single();
+
+      if (error) throw error;
+      return chat;
+    }),
+
   // Get messages for a specific chat
-  getMessages: protectedProcedure
+  getMessages: supabaseProtectedProcedure
     .input(
       z.object({
-        chatId: z.string().uuid(),
+        chatId: z.string(), // Changed from uuid() to string() since chat IDs are TEXT like 'chat-1'
         limit: z.number().default(50),
         offset: z.number().default(0),
       })
@@ -60,16 +80,17 @@ export const chatRouter = router({
         .select(
           `
           id,
-          text,
-          author_id,
+          content,
+          user_id,
           created_at,
+          updated_at,
           reply_to_message_id,
-          profiles!author_id(username, avatar_url),
+          profiles!user_id(username, avatar_url),
           reply_to:messages!reply_to_message_id(
             id,
-            text,
-            author_id,
-            profiles!author_id(username)
+            content,
+            user_id,
+            profiles!user_id(username)
           )
         `
         )
@@ -82,12 +103,12 @@ export const chatRouter = router({
     }),
 
   // Send a message to a chat
-  sendMessage: protectedProcedure
+  sendMessage: supabaseProtectedProcedure
     .input(
       z.object({
-        chatId: z.string().uuid(),
-        text: z.string().min(1),
-        replyToMessageId: z.string().uuid().optional(),
+        chatId: z.string(), // Changed from uuid() to string()
+        content: z.string().min(1), // Changed from 'text' to 'content'
+        replyToMessageId: z.string().optional(), // Changed from uuid() to string()
       })
     )
     .mutation(async ({ input, ctx }: any) => {
@@ -111,19 +132,21 @@ export const chatRouter = router({
       const { data: message, error } = await supabase
         .from("messages")
         .insert({
+          id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Generate TEXT ID
           chat_id: input.chatId,
-          author_id: userId,
-          text: input.text,
+          user_id: userId,
+          content: input.content, // Changed from 'text' to 'content'
           reply_to_message_id: input.replyToMessageId || null,
         })
         .select(
           `
           id,
-          text,
-          author_id,
+          content,
+          user_id,
           created_at,
+          updated_at,
           reply_to_message_id,
-          profiles!author_id(username, avatar_url)
+          profiles!user_id(username, avatar_url)
         `
         )
         .single();
@@ -133,8 +156,8 @@ export const chatRouter = router({
     }),
 
   // Get chat settings (mute status)
-  getSettings: protectedProcedure
-    .input(z.object({ chatId: z.string().uuid() }))
+  getSettings: supabaseProtectedProcedure
+    .input(z.object({ chatId: z.string() })) // Changed from uuid() to string()
     .query(async ({ input, ctx }: any) => {
       const userId = ctx.supabaseUser?.id;
       if (!userId) throw new Error("Unauthorized");
@@ -152,10 +175,10 @@ export const chatRouter = router({
     }),
 
   // Set mute status for a chat
-  setMute: protectedProcedure
+  setMute: supabaseProtectedProcedure
     .input(
       z.object({
-        chatId: z.string().uuid(),
+        chatId: z.string(), // Changed from uuid() to string()
         isMuted: z.boolean(),
       })
     )

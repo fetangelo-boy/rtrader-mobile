@@ -1,9 +1,9 @@
-import { router, protectedProcedure } from "../_core/trpc";
+import { router, supabaseProtectedProcedure } from "../_core/trpc";
 import { getServerSupabase } from "../../lib/supabase";
 
 export const accountRouter = router({
   // Get subscription status for current user
-  getSubscription: protectedProcedure.query(async ({ ctx }: any) => {
+  getSubscription: supabaseProtectedProcedure.query(async ({ ctx }: any) => {
     const userId = ctx.supabaseUser?.id;
     if (!userId) throw new Error("Unauthorized");
     const supabase = getServerSupabase();

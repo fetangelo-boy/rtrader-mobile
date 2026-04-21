@@ -1,4 +1,4 @@
-import { View, Text, TextInput, Pressable, ActivityIndicator, Alert, ScrollView } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Pressable, ActivityIndicator, Alert, ScrollView } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useState } from "react";
@@ -22,10 +22,14 @@ export default function LoginScreen() {
 
     try {
       setLoading(true);
-      await SupabaseAuth.signInWithEmail(email, password);
+      console.log("[Login] Attempting to sign in with:", email);
+      const result = await SupabaseAuth.signInWithEmail(email, password);
+      console.log("[Login] Sign in successful:", result.user?.email);
       // Navigation will happen automatically through auth state change
+      console.log("[Login] Navigating to chats...");
       router.replace("/(tabs)/chats");
     } catch (error: any) {
+      console.error("[Login] Error:", error);
       Alert.alert("Ошибка входа", error.message || "Не удалось войти в аккаунт");
     } finally {
       setLoading(false);
@@ -87,7 +91,7 @@ export default function LoginScreen() {
               />
               <Pressable
                 onPress={() => setShowPassword(!showPassword)}
-                className="px-4 py-3"
+                style={{ paddingHorizontal: 16, paddingVertical: 12 }}
               >
                 <Text className="text-lg">{showPassword ? "👁️" : "👁️‍🗨️"}</Text>
               </Pressable>
@@ -95,16 +99,16 @@ export default function LoginScreen() {
           </View>
 
           {/* Login Button */}
-          <Pressable
+          <TouchableOpacity
             onPress={handleLogin}
             disabled={loading}
-            style={({ pressed }) => [
-              {
-                opacity: pressed ? 0.8 : 1,
-                backgroundColor: colors.primary,
-              },
-              { borderRadius: 8, paddingVertical: 14, marginBottom: 12 },
-            ]}
+            activeOpacity={0.8}
+            style={{
+              backgroundColor: colors.primary,
+              borderRadius: 8,
+              paddingVertical: 14,
+              marginBottom: 12,
+            }}
           >
             {loading ? (
               <ActivityIndicator color={colors.background} />
@@ -113,18 +117,18 @@ export default function LoginScreen() {
                 Войти
               </Text>
             )}
-          </Pressable>
+          </TouchableOpacity>
 
           {/* Forgot Password Link */}
-          <Pressable
+          <TouchableOpacity
             onPress={handleForgotPassword}
             disabled={loading}
-            className="mb-6"
+            style={{ marginBottom: 24 }}
           >
             <Text className="text-center text-sm text-primary">
               Забыли пароль?
             </Text>
-          </Pressable>
+          </TouchableOpacity>
 
           {/* Divider */}
           <View className="flex-row items-center mb-6">
@@ -136,11 +140,11 @@ export default function LoginScreen() {
           {/* Sign Up Link */}
           <View className="flex-row justify-center">
             <Text className="text-sm text-muted">Нет аккаунта? </Text>
-            <Pressable onPress={handleSignUp} disabled={loading}>
+            <TouchableOpacity onPress={handleSignUp} disabled={loading}>
               <Text className="text-sm font-semibold text-primary">
                 Зарегистрироваться
               </Text>
-            </Pressable>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>

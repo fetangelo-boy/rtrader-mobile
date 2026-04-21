@@ -14,18 +14,14 @@ export async function createContext(opts: CreateExpressContextOptions): Promise<
   let user: User | null = null;
   let supabaseUser: { id: string; email: string } | null = null;
 
-  try {
-    user = await sdk.authenticateRequest(opts.req);
-  } catch (error) {
-    // Authentication is optional for public procedures.
-    user = null;
-  }
+  // Try to get Supabase user from Authorization header FIRST
+  // (before Manus SDK auth, to avoid JOSEAlgNotAllowed noise for Supabase tokens)
+  const authHeader = opts.req.headers.authorization;
+  const isSupabaseToken = authHeader?.startsWith("Bearer eyJ");
 
-  // Try to get Supabase user from Authorization header
-  try {
-    const authHeader = opts.req.headers.authorization;
-    if (authHeader?.startsWith("Bearer ")) {
-      const token = authHeader.slice(7);
+  if (isSupabaseToken) {
+    try {
+      const token = authHeader!.slice(7);
       const supabase = getServerSupabase();
       const { data, error } = await supabase.auth.getUser(token);
       if (!error && data.user) {
@@ -33,11 +29,22 @@ export async function createContext(opts: CreateExpressContextOptions): Promise<
           id: data.user.id,
           email: data.user.email || "",
         };
+        console.log("[Auth] Supabase user authenticated:", supabaseUser.email);
+      } else if (error) {
+        console.warn("[Auth] Supabase token verification failed:", error.message);
       }
+    } catch (error) {
+      console.warn("[Auth] Supabase auth error:", String(error));
+      supabaseUser = null;
     }
-  } catch (error) {
-    // Supabase auth is optional
-    supabaseUser = null;
+  } else {
+    // Only try Manus SDK auth for non-Supabase tokens
+    try {
+      user = await sdk.authenticateRequest(opts.req);
+    } catch (error) {
+      // Authentication is optional for public procedures.
+      user = null;
+    }
   }
 
   return {

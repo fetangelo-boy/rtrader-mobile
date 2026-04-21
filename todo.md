@@ -34,8 +34,8 @@
 
 ## In Progress 🔄
 - [x] Добавлены социальные сети (Telegram, VK, Dzen) на экран Аккаунта
-- [ ] Интеграция с backend API для чатов
-- [ ] Интеграция с backend API для статуса подписки
+- [x] Интеграция с backend API для чатов
+- [x] Интеграция с backend API для статуса подписки
 - [ ] Загрузка фото в чаты
 - [ ] Push-уведомления
 
@@ -93,3 +93,22 @@
 - [ ] Провести полный E2E тест (логин -> чаты -> сообщения -> reply -> фото -> mute -> аккаунт -> логаут)
 - [ ] Исправить найденные баги
 - [ ] Закоммитить все изменения в GitHub
+
+
+## Backend Auth & Data Flow Fixes 🔴
+- [x] Fix JOSEAlgNotAllowed - server JWT verification uses wrong algorithm/key
+- [x] Fix tRPC context to correctly pass Supabase user to routers
+- [x] Fix chats router to use supabaseUser instead of Manus user
+- [x] Set up Supabase DB schema (chats, messages, profiles tables)
+- [x] Seed test data (at least one chat for test@rtrader.com)
+- [x] Test end-to-end: login → chats list → open chat
+
+## Current Issue - Login Button Not Working ✅ RESOLVED
+- [x] Настроить Supabase CLI для прямого доступа к БД
+- [x] Проверить инициализацию Supabase Auth в приложении
+- [x] Отладить login flow - выяснить, почему signInWithEmail не срабатывает
+- [x] Проверить, работает ли web-specific button event handling
+- [x] Проверить логи API сервера при клике на кнопку входа
+- [x] Проверить, инициализирован ли Supabase клиент
+- [x] Исправить проблему с обработчиком события кнопки
+- [x] Протестировать login на web

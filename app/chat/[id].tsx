@@ -1,4 +1,4 @@
-import { View, Text, FlatList, Pressable, TextInput, Alert, ActivityIndicator, ScrollView } from "react-native";
+import { View, Text, FlatList, Pressable, TextInput, Alert, ActivityIndicator } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -8,14 +8,14 @@ import { trpc } from "@/lib/trpc";
 
 interface Message {
   id: string;
-  author_id: string;
+  user_id: string;
   author: string;
-  text: string;
+  content: string;
   created_at: string;
   reply_to_message_id?: string;
   replyTo?: {
     author: string;
-    text: string;
+    content: string;
   };
   isOwn?: boolean;
 }
@@ -30,11 +30,44 @@ export default function ChatDetailScreen() {
   const [loading, setLoading] = useState(true);
   const scrollViewRef = useRef<FlatList>(null);
 
-  // Fetch chat messages
+  // Fetch chat info for header
+  const { data: chatInfo } = trpc.chat.getChatInfo.useQuery({ chatId: chatId as string });
+
+  // Fetch chat messages via tRPC
   const { data: messagesData, isLoading: messagesLoading } = trpc.chat.getMessages.useQuery({
     chatId: chatId as string,
     limit: 50,
     offset: 0,
+  });
+
+  // Send message mutation
+  const sendMessageMutation = trpc.chat.sendMessage.useMutation({
+    onSuccess: (sentMessage: any) => {
+      const profile = Array.isArray(sentMessage.profiles) ? sentMessage.profiles[0] : sentMessage.profiles;
+      const newMsg: Message = {
+        id: sentMessage.id,
+        user_id: sentMessage.user_id,
+        author: profile?.username || "Вы",
+        content: sentMessage.content,
+        created_at: sentMessage.created_at,
+        reply_to_message_id: sentMessage.reply_to_message_id,
+        replyTo: replyingTo ? {
+          author: replyingTo.author,
+          content: replyingTo.content,
+        } : undefined,
+        isOwn: true,
+      };
+      setMessages((prev) => [...prev, newMsg]);
+      setNewMessage("");
+      setReplyingTo(null);
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    },
+    onError: (error: any) => {
+      console.error("Failed to send message:", error);
+      Alert.alert("Ошибка", "Не удалось отправить сообщение");
+    },
   });
 
   useEffect(() => {
@@ -42,63 +75,34 @@ export default function ChatDetailScreen() {
       const formattedMessages: Message[] = messagesData.map((msg: any) => {
         const profile = Array.isArray(msg.profiles) ? msg.profiles[0] : msg.profiles;
         return {
-        id: msg.id,
-        author_id: msg.author_id,
-        author: profile?.username || "Unknown",
-        text: msg.text,
-        created_at: msg.created_at,
-        reply_to_message_id: msg.reply_to_message_id,
-        replyTo: msg.reply_to ? {
-          author: msg.reply_to.profiles?.username || "Unknown",
-          text: msg.reply_to.text,
-        } : undefined,
-        isOwn: false, // TODO: check if current user
-      };
+          id: msg.id,
+          user_id: msg.user_id,
+          author: profile?.username || "Пользователь",
+          content: msg.content, // API returns 'content', not 'text'
+          created_at: msg.created_at,
+          reply_to_message_id: msg.reply_to_message_id,
+          replyTo: msg.reply_to ? {
+            author: (() => {
+              const rp = Array.isArray(msg.reply_to.profiles) ? msg.reply_to.profiles[0] : msg.reply_to.profiles;
+              return rp?.username || "Пользователь";
+            })(),
+            content: msg.reply_to.content,
+          } : undefined,
+          isOwn: false, // TODO: compare with current user ID from session
+        };
       });
       setMessages(formattedMessages);
       setLoading(false);
     }
   }, [messagesData]);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = () => {
     if (!newMessage.trim()) return;
-
-    try {
-      const client = trpc.createClient({} as any);
-      const sentMessage = await client.chat.sendMessage.mutate({
-        chatId: chatId as string,
-        text: newMessage,
-        replyToMessageId: replyingTo?.id,
-      });
-
-      if (sentMessage) {
-        const profile = Array.isArray(sentMessage.profiles) ? sentMessage.profiles[0] : sentMessage.profiles;
-      const newMsg: Message = {
-          id: sentMessage.id,
-          author_id: sentMessage.author_id,
-          author: profile?.username || "You",
-          text: sentMessage.text,
-          created_at: sentMessage.created_at,
-          reply_to_message_id: sentMessage.reply_to_message_id,
-          replyTo: replyingTo ? {
-            author: replyingTo.author,
-            text: replyingTo.text,
-          } : undefined,
-          isOwn: true,
-        };
-
-        setMessages([...messages, newMsg]);
-        setNewMessage("");
-        setReplyingTo(null);
-
-        setTimeout(() => {
-          scrollViewRef.current?.scrollToEnd({ animated: true });
-        }, 100);
-      }
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      Alert.alert("Ошибка", "Не удалось отправить сообщение");
-    }
+    sendMessageMutation.mutate({
+      chatId: chatId as string,
+      content: newMessage.trim(),
+      replyToMessageId: replyingTo?.id,
+    });
   };
 
   const handleReply = (message: Message) => {
@@ -107,7 +111,7 @@ export default function ChatDetailScreen() {
 
   const renderMessage = ({ item }: { item: Message }) => (
     <Pressable
-      onLongPress={() => !item.isOwn && handleReply(item)}
+      onLongPress={() => handleReply(item)}
       style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
     >
       <View className={cn("px-4 py-2", item.isOwn && "items-end")}>
@@ -122,7 +126,7 @@ export default function ChatDetailScreen() {
           >
             <Text className="text-xs text-muted">{item.replyTo.author}</Text>
             <Text className="text-sm text-foreground" numberOfLines={2}>
-              {item.replyTo.text}
+              {item.replyTo.content}
             </Text>
           </View>
         )}
@@ -131,9 +135,7 @@ export default function ChatDetailScreen() {
         <View
           className={cn(
             "rounded-lg px-3 py-2 max-w-xs",
-            item.isOwn
-              ? "bg-primary"
-              : "bg-surface"
+            item.isOwn ? "bg-primary" : "bg-surface"
           )}
         >
           {!item.isOwn && (
@@ -145,7 +147,7 @@ export default function ChatDetailScreen() {
             "text-sm",
             item.isOwn ? "text-background" : "text-foreground"
           )}>
-            {item.text}
+            {item.content}
           </Text>
           <Text className={cn(
             "text-xs mt-1",
@@ -174,21 +176,21 @@ export default function ChatDetailScreen() {
     <ScreenContainer className="p-0 flex-1">
       {/* Заголовок */}
       <View
-        className="px-4 py-3 border-b flex-row items-center justify-between"
+        className="px-4 py-3 border-b flex-row items-center"
         style={{ borderBottomColor: colors.border }}
       >
-        <Pressable onPress={() => router.back()} className="p-2 -ml-2">
-          <Text className="text-2xl">←</Text>
+        <Pressable
+          onPress={() => router.back()}
+          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, padding: 8, marginLeft: -8 }]}
+        >
+          <Text className="text-2xl text-foreground">←</Text>
         </Pressable>
         <View className="flex-1 ml-2">
-          <Text className="text-lg font-bold text-foreground">Чат</Text>
+          <Text className="text-lg font-bold text-foreground">{chatInfo?.name || `Чат ${chatId}`}</Text>
           <Text className="text-xs text-muted">
             {messages.length} сообщений
           </Text>
         </View>
-        <Pressable className="p-2">
-          <Text className="text-lg">ℹ️</Text>
-        </Pressable>
       </View>
 
       {/* Сообщения */}
@@ -213,16 +215,19 @@ export default function ChatDetailScreen() {
       {replyingTo && (
         <View
           className="px-4 py-2 border-b flex-row items-center justify-between"
-          style={{ borderBottomColor: colors.border }}
+          style={{ borderBottomColor: colors.border, backgroundColor: colors.surface }}
         >
           <View className="flex-1">
             <Text className="text-xs text-muted">Ответ на {replyingTo.author}</Text>
             <Text className="text-sm text-foreground" numberOfLines={1}>
-              {replyingTo.text}
+              {replyingTo.content}
             </Text>
           </View>
-          <Pressable onPress={() => setReplyingTo(null)} className="p-2">
-            <Text className="text-lg">✕</Text>
+          <Pressable
+            onPress={() => setReplyingTo(null)}
+            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, padding: 8 }]}
+          >
+            <Text className="text-lg text-foreground">✕</Text>
           </Pressable>
         </View>
       )}
@@ -240,17 +245,16 @@ export default function ChatDetailScreen() {
           className="flex-1 px-3 py-2 rounded-lg text-foreground"
           style={{ backgroundColor: colors.surface, maxHeight: 100 }}
           multiline
+          returnKeyType="send"
+          onSubmitEditing={handleSendMessage}
         />
         <Pressable
           onPress={handleSendMessage}
-          disabled={!newMessage.trim()}
-          className="p-2"
+          disabled={!newMessage.trim() || sendMessageMutation.isPending}
+          style={({ pressed }) => [{ opacity: (!newMessage.trim() || sendMessageMutation.isPending) ? 0.3 : pressed ? 0.7 : 1, padding: 8 }]}
         >
-          <Text className={cn(
-            "text-xl",
-            newMessage.trim() ? "opacity-100" : "opacity-30"
-          )}>
-            ✈️
+          <Text className="text-xl">
+            {sendMessageMutation.isPending ? "⏳" : "✈️"}
           </Text>
         </Pressable>
       </View>

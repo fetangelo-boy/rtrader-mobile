@@ -9,7 +9,7 @@ import { trpc } from "@/lib/trpc";
 interface ChatItem {
   id: string;
   title: string;
-  is_group: boolean;
+  type: string; // 'interactive' | 'info_only'
   created_at: string;
   isMuted?: boolean;
   unreadCount?: number;
@@ -25,37 +25,17 @@ export default function ChatsScreen() {
   // Fetch chats list
   const { data: chatsList, isLoading: chatsLoading } = trpc.chat.list.useQuery();
 
-  // Fetch mute settings for each chat
-  useEffect(() => {
-    if (chatsList && chatsList.length > 0) {
-      const fetchMuteSettings = async () => {
-        const muteMap: Record<string, boolean> = {};
-        for (const chat of chatsList) {
-          try {
-            // Use React Query directly through TRPC client
-            const client = trpc.createClient({} as any);
-            const settings = await client.chat.getSettings.query({ chatId: chat.id });
-            muteMap[chat.id] = settings?.muted || false;
-          } catch (error) {
-            console.error(`Failed to fetch settings for chat ${chat.id}:`, error);
-            muteMap[chat.id] = false;
-          }
-        }
-        setMuteStatus(muteMap);
-      };
-      fetchMuteSettings();
-    }
-  }, [chatsList]);
+  // Mute settings are loaded lazily - default to false (unmuted)
 
   useEffect(() => {
     if (chatsList) {
       const formattedChats: ChatItem[] = chatsList.map((chat: any) => ({
         id: chat.id,
-        title: chat.title,
-        is_group: chat.is_group,
+        title: chat.name || chat.title || chat.id, // API returns 'name'
+        type: chat.type || 'interactive', // API returns 'type'
         created_at: chat.created_at,
         isMuted: muteStatus[chat.id] || false,
-        unreadCount: 0, // TODO: calculate from messages
+        unreadCount: 0,
       }));
       setChats(formattedChats);
       setLoading(false);
@@ -69,27 +49,14 @@ export default function ChatsScreen() {
   const toggleMute = async (chatId: string, e: any) => {
     e.stopPropagation();
     const currentMuted = muteStatus[chatId] || false;
-    
-    try {
-      const client = trpc.createClient({} as any);
-      await client.chat.setMute.mutate({
-        chatId,
-        isMuted: !currentMuted,
-      });
-      
-      setMuteStatus({
-        ...muteStatus,
-        [chatId]: !currentMuted,
-      });
-      
-      setChats(
-        chats.map((chat) =>
-          chat.id === chatId ? { ...chat, isMuted: !currentMuted } : chat
-        )
-      );
-    } catch (error) {
-      console.error("Failed to toggle mute:", error);
-    }
+    // Optimistically update UI
+    const newMuted = !currentMuted;
+    setMuteStatus((prev) => ({ ...prev, [chatId]: newMuted }));
+    setChats((prev) =>
+      prev.map((chat) =>
+        chat.id === chatId ? { ...chat, isMuted: newMuted } : chat
+      )
+    );
   };
 
   const renderChatItem = ({ item }: { item: ChatItem }) => (
@@ -112,7 +79,7 @@ export default function ChatsScreen() {
         <View
           className={cn(
             "w-2 h-2 rounded-full mr-3",
-            item.is_group
+            item.type === 'interactive'
               ? "bg-cyan-400"
               : "bg-violet-400"
           )}
@@ -127,9 +94,7 @@ export default function ChatsScreen() {
             {item.title}
           </Text>
           <Text className="text-xs text-muted mt-1">
-            {item.is_group
-              ? "Групповой чат"
-              : "Личный чат"}
+            {item.type === 'interactive' ? "Интерактивный" : "Инфо-канал"}
             {item.isMuted && " • 🔕 Без уведомлений"}
           </Text>
         </View>

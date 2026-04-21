@@ -92,6 +92,10 @@ const config: ExpoConfig = {
     bundler: "metro",
     output: "static",
     favicon: "./assets/images/favicon.png",
+    env: {
+      EXPO_PUBLIC_SUPABASE_URL: env.supabaseUrl,
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: env.supabaseAnonKey,
+    },
   },
   plugins: [
     "expo-router",
