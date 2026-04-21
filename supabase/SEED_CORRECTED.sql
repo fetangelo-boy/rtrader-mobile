@@ -14,7 +14,7 @@ VALUES (
   'testuser',
   'https://api.dicebear.com/7.x/avataaars/svg?seed=testuser',
   NOW()
-) ON CONFLICT (id) DO UPDATE SET updated_at = NOW();
+) ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- Insert 8 test chats (5 interactive + 3 info-only)
