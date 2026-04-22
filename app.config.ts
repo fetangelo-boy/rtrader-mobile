@@ -37,6 +37,8 @@ const env = {
   // Supabase credentials from environment
   supabaseUrl: process.env.VITE_SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || "",
   supabaseAnonKey: process.env.VITE_SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "",
+  // Metro URL for asset loading on mobile (Expo Go)
+  metroUrl: process.env.EXPO_PUBLIC_METRO_URL || "",
 };
 
 const config: ExpoConfig = {
@@ -96,6 +98,12 @@ const config: ExpoConfig = {
       EXPO_PUBLIC_SUPABASE_URL: env.supabaseUrl,
       EXPO_PUBLIC_SUPABASE_ANON_KEY: env.supabaseAnonKey,
     },
+  },
+  runtimeVersion: {
+    policy: "appVersion",
+  },
+  updates: {
+    enabled: false,
   },
   plugins: [
     "expo-router",
