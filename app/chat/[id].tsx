@@ -43,11 +43,12 @@ export default function ChatDetailScreen() {
   // Send message mutation
   const sendMessageMutation = trpc.chat.sendMessage.useMutation({
     onSuccess: (sentMessage: any) => {
-      const profile = Array.isArray(sentMessage.profiles) ? sentMessage.profiles[0] : sentMessage.profiles;
+      const profile = sentMessage.profiles;
+      const author = (profile?.username && String(profile.username).trim()) ? String(profile.username).trim() : "Вы";
       const newMsg: Message = {
         id: sentMessage.id,
         user_id: sentMessage.user_id,
-        author: profile?.username || "Вы",
+        author: author,
         content: sentMessage.content,
         created_at: sentMessage.created_at,
         reply_to_message_id: sentMessage.reply_to_message_id,
@@ -72,31 +73,31 @@ export default function ChatDetailScreen() {
 
   useEffect(() => {
     if (messagesData) {
-      console.log("[Chat] Raw messagesData:", JSON.stringify(messagesData, null, 2));
       const formattedMessages: Message[] = messagesData.map((msg: any) => {
-        const profile = Array.isArray(msg.profiles) ? msg.profiles[0] : msg.profiles;
-        console.log("[Chat] Message:", msg.id, "Profile:", profile, "Username:", profile?.username);
-        // Use username if it exists and is not empty, otherwise use fallback
+        // profiles is an object, not an array
+        const profile = msg.profiles;
         const author = (profile?.username && String(profile.username).trim()) ? String(profile.username).trim() : "Пользователь";
-        console.log("[Chat] Final author:", author);
+        
+        // reply_to is an array, need to check if it exists and has items
+        const replyToMsg = Array.isArray(msg.reply_to) && msg.reply_to.length > 0 ? msg.reply_to[0] : msg.reply_to;
+        
         return {
           id: msg.id,
           user_id: msg.user_id,
           author: author,
-          content: msg.content, // API returns 'content', not 'text'
+          content: msg.content,
           created_at: msg.created_at,
           reply_to_message_id: msg.reply_to_message_id,
-          replyTo: msg.reply_to ? {
+          replyTo: replyToMsg ? {
             author: (() => {
-              const rp = Array.isArray(msg.reply_to.profiles) ? msg.reply_to.profiles[0] : msg.reply_to.profiles;
+              const rp = replyToMsg.profiles;
               return (rp?.username && String(rp.username).trim()) ? String(rp.username).trim() : "Пользователь";
             })(),
-            content: msg.reply_to.content,
+            content: replyToMsg.content,
           } : undefined,
-          isOwn: false, // TODO: compare with current user ID from session
+          isOwn: false,
         };
       });
-      console.log("[Chat] Formatted messages:", formattedMessages);
       setMessages(formattedMessages);
       setLoading(false);
     }
@@ -252,11 +253,9 @@ export default function ChatDetailScreen() {
           placeholderTextColor={colors.muted}
           className="flex-1 px-3 py-2 rounded-lg text-foreground"
           style={{ backgroundColor: colors.surface, maxHeight: 100 }}
-          multiline
+          multiline={true}
           returnKeyType="send"
-          onSubmitEditing={() => {
-            handleSendMessage();
-          }}
+          onSubmitEditing={handleSendMessage}
           blurOnSubmit={false}
         />
         <Pressable

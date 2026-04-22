@@ -85,6 +85,9 @@ if status == 200:
         print(f"   ✅ Got {len(json_data)} messages!")
         for msg in json_data[:3]:
             print(f"      - {msg.get('id')}: '{str(msg.get('content', ''))[:50]}'")
+        print("\n   Full message structure (first message):")
+        if json_data:
+            print(json.dumps(json_data[0], indent=2))
     else:
         print(f"   Response: {json.dumps(data, indent=2)[:500]}")
 else:
