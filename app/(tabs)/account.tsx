@@ -1,5 +1,6 @@
 import { View, Text, ScrollView, Pressable, Linking, ActivityIndicator } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
+import { VersionInfo } from "@/components/version-info";
 import { useColors } from "@/hooks/use-colors";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
@@ -249,6 +250,9 @@ export default function AccountScreen() {
           </Pressable>
         </View>
       </ScrollView>
+      
+      {/* Version Info */}
+      <VersionInfo />
     </ScreenContainer>
   );
 }
