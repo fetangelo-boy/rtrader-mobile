@@ -72,10 +72,13 @@ export default function ChatDetailScreen() {
 
   useEffect(() => {
     if (messagesData) {
+      console.log("[Chat] Raw messagesData:", JSON.stringify(messagesData, null, 2));
       const formattedMessages: Message[] = messagesData.map((msg: any) => {
         const profile = Array.isArray(msg.profiles) ? msg.profiles[0] : msg.profiles;
+        console.log("[Chat] Message:", msg.id, "Profile:", profile, "Username:", profile?.username);
         // Use username if it exists and is not empty, otherwise use fallback
         const author = (profile?.username && String(profile.username).trim()) ? String(profile.username).trim() : "Пользователь";
+        console.log("[Chat] Final author:", author);
         return {
           id: msg.id,
           user_id: msg.user_id,
@@ -93,12 +96,14 @@ export default function ChatDetailScreen() {
           isOwn: false, // TODO: compare with current user ID from session
         };
       });
+      console.log("[Chat] Formatted messages:", formattedMessages);
       setMessages(formattedMessages);
       setLoading(false);
     }
   }, [messagesData]);
 
   const handleSendMessage = () => {
+    console.log("[Chat] handleSendMessage called, newMessage:", newMessage);
     if (!newMessage.trim()) return;
 
     sendMessageMutation.mutate({
