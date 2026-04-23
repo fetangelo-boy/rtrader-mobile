@@ -9,6 +9,18 @@ export const chatRouter = router({
     if (!userId) throw new Error("Unauthorized");
     const supabase = getServerSupabase();
 
+    // First get chat IDs where user is a participant
+    const { data: participants, error: participantError } = await supabase
+      .from("chat_participants")
+      .select("chat_id")
+      .eq("user_id", userId);
+
+    if (participantError) throw participantError;
+    if (!participants || participants.length === 0) return [];
+
+    const chatIds = participants.map((p: any) => p.chat_id);
+
+    // Now get the chat details for these IDs
     const { data: chats, error } = await supabase
       .from("chats")
       .select(
@@ -19,11 +31,10 @@ export const chatRouter = router({
         type,
         created_at,
         updated_at,
-        chat_participants(user_id),
         messages(id, created_at)
       `
       )
-      .eq("chat_participants.user_id", userId)
+      .in("id", chatIds)
       .order("created_at", { ascending: false });
 
     if (error) throw error;

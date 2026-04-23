@@ -20,15 +20,35 @@ export default function ChatsScreen() {
   const router = useRouter();
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [muteStatus, setMuteStatus] = useState<Record<string, boolean>>({});
 
-  // Fetch chats list
-  const { data: chatsList, isLoading: chatsLoading } = trpc.chat.list.useQuery();
+  // Fetch chats list with timeout
+  const { data: chatsList, isLoading: chatsLoading, error: queryError } = trpc.chat.list.useQuery(undefined, {
+    retry: 1,
+    retryDelay: 1000,
+  });
+
+  // Debug logging
+  useEffect(() => {
+    console.log('[ChatsScreen] Query state:', { chatsLoading, queryError, hasData: !!chatsList });
+    if (queryError) {
+      console.error('[ChatsScreen] Query error:', queryError);
+    }
+  }, [chatsLoading, queryError, chatsList]);
 
   // Mute settings are loaded lazily - default to false (unmuted)
 
   useEffect(() => {
+    if (queryError) {
+      console.error('[ChatsScreen] Setting error state:', queryError);
+      setError('Ошибка загрузки чатов. Проверьте интернет соединение.');
+      setLoading(false);
+      return;
+    }
+    
     if (chatsList) {
+      console.log('[ChatsScreen] Formatting chats:', chatsList.length);
       const formattedChats: ChatItem[] = chatsList.map((chat: any) => ({
         id: chat.id,
         title: chat.name || chat.title || chat.id, // API returns 'name'
@@ -37,10 +57,32 @@ export default function ChatsScreen() {
         isMuted: muteStatus[chat.id] || false,
         unreadCount: 0,
       }));
+      console.log('[ChatsScreen] Chats loaded:', formattedChats.length);
       setChats(formattedChats);
       setLoading(false);
+      setError(null);
     }
-  }, [chatsList, muteStatus]);
+  }, [chatsList, muteStatus, queryError]);
+
+  // Add timeout for loading state
+  useEffect(() => {
+    if (loading && chatsLoading) {
+      console.log('[ChatsScreen] Starting timeout for chat loading...');
+      const timeout = setTimeout(() => {
+        if (chatsLoading) {
+          console.error('[ChatsScreen] Chat loading timeout after 10 seconds');
+          setError('Загрузка чатов занимает слишком долго. Попробуйте перезагрузить приложение.');
+          setLoading(false);
+        }
+      }, 10000); // 10 second timeout
+      return () => clearTimeout(timeout);
+    }
+  }, [loading, chatsLoading]);
+
+  // Log initial mount
+  useEffect(() => {
+    console.log('[ChatsScreen] Mounted');
+  }, []);
 
   const handleChatPress = (chatId: string) => {
     router.push(`/chat/${chatId}`);
@@ -124,11 +166,36 @@ export default function ChatsScreen() {
     </Pressable>
   );
 
+  if (error) {
+    return (
+      <ScreenContainer className="items-center justify-center">
+        <Text className="text-error text-center mb-4">⚠️</Text>
+        <Text className="text-foreground text-center font-semibold mb-2">Ошибка</Text>
+        <Text className="text-muted text-center mb-6">{error}</Text>
+        <Text className="text-xs text-muted text-center mb-4 px-4">Debug: {queryError?.message || 'Unknown error'}</Text>
+        <Pressable
+          onPress={() => {
+            console.log('[ChatsScreen] User clicked retry');
+            setError(null);
+            setLoading(true);
+            // Force refresh
+            window.location.reload?.();
+          }}
+          style={{ backgroundColor: colors.primary }}
+          className="px-6 py-3 rounded-lg"
+        >
+          <Text className="text-background font-semibold">Повторить</Text>
+        </Pressable>
+      </ScreenContainer>
+    );
+  }
+
   if (loading || chatsLoading) {
     return (
       <ScreenContainer className="items-center justify-center">
         <ActivityIndicator size="large" color={colors.primary} />
         <Text className="text-muted mt-4">Загрузка чатов...</Text>
+        <Text className="text-xs text-muted mt-2">Это может занять до 10 секунд</Text>
       </ScreenContainer>
     );
   }
