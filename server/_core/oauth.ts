@@ -134,6 +134,55 @@ export function registerOAuthRoutes(app: Express) {
     res.json({ success: true });
   });
 
+  // Email/password login for mobile app
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        res.status(400).json({ error: "email and password are required" });
+        return;
+      }
+
+      console.log(`[Auth] Login attempt for email: ${email}`);
+      
+      // Import Supabase client
+      const { getServerSupabase } = await import("../../lib/supabase.js");
+      const supabase = getServerSupabase();
+      
+      // Use Supabase to authenticate
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error || !data.user || !data.session) {
+        console.error(`[Auth] Login failed for ${email}:`, error?.message);
+        res.status(401).json({ error: "Invalid email or password" });
+        return;
+      }
+
+      console.log(`[Auth] Login successful for ${email}, user_id: ${data.user.id}`);
+      
+      // For mobile, we'll return the Supabase session directly
+      // The mobile app can use this access_token with the API
+
+      res.json({
+        success: true,
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.user_metadata?.name || data.user.email,
+        },
+      });
+    } catch (error) {
+      console.error("[Auth] Login endpoint error:", error);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
   // Get current authenticated user - works with both cookie (web) and Bearer token (mobile)
   app.get("/api/auth/me", async (req: Request, res: Response) => {
     try {

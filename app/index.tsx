@@ -19,7 +19,10 @@ export default function RootIndex() {
       try {
         // On native platforms, restore session from SecureStore first
         if (Platform.OS !== "web") {
-          console.log("[Auth Check] Native platform: restoring session from SecureStore...");
+          console.log("[Auth Check] Native platform: checking app version and restoring session...");
+          // Clear old session if app version changed
+          await SupabaseAuth.clearOldSessionIfVersionChanged();
+          // Then restore session if available
           await SupabaseAuth.restoreSession();
         }
 

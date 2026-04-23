@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
+import { Platform, Keyboard } from "react-native";
 
 interface Message {
   id: string;
@@ -29,16 +30,25 @@ export default function ChatDetailScreen() {
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [loading, setLoading] = useState(true);
   const scrollViewRef = useRef<FlatList>(null);
+  const inputRef = useRef<TextInput>(null);
 
   // Fetch chat info for header
   const { data: chatInfo } = trpc.chat.getChatInfo.useQuery({ chatId: chatId as string });
 
   // Fetch chat messages via tRPC
-  const { data: messagesData, isLoading: messagesLoading } = trpc.chat.getMessages.useQuery({
+  const { data: messagesData, isLoading: messagesLoading, error: messagesError } = trpc.chat.getMessages.useQuery({
     chatId: chatId as string,
     limit: 50,
     offset: 0,
   });
+
+  // Debug logging
+  useEffect(() => {
+    console.log("[ChatDetail] chatId:", chatId);
+    console.log("[ChatDetail] messagesData:", messagesData);
+    console.log("[ChatDetail] messagesLoading:", messagesLoading);
+    console.log("[ChatDetail] messagesError:", messagesError);
+  }, [messagesData, messagesLoading, messagesError, chatId]);
 
   // Send message mutation
   const sendMessageMutation = trpc.chat.sendMessage.useMutation({
@@ -104,14 +114,27 @@ export default function ChatDetailScreen() {
   }, [messagesData]);
 
   const handleSendMessage = () => {
-    console.log("[Chat] handleSendMessage called, newMessage:", newMessage);
-    if (!newMessage.trim()) return;
+    console.log("[Chat] handleSendMessage called");
+    console.log("[Chat] newMessage:", newMessage);
+    console.log("[Chat] chatId:", chatId);
+    if (!newMessage.trim()) {
+      console.log("[Chat] Message is empty, skipping");
+      return;
+    }
 
+    console.log("[Chat] Sending message...");
     sendMessageMutation.mutate({
       chatId: chatId as string,
       content: newMessage.trim(),
       replyToMessageId: replyingTo?.id,
     });
+    
+    // Keep keyboard open on Android
+    if (Platform.OS === "android") {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    }
   };
 
   const handleReply = (message: Message) => {
@@ -247,6 +270,7 @@ export default function ChatDetailScreen() {
         style={{ borderTopColor: colors.border }}
       >
         <TextInput
+          ref={inputRef}
           value={newMessage}
           onChangeText={setNewMessage}
           placeholder="Введите сообщение..."
@@ -257,6 +281,7 @@ export default function ChatDetailScreen() {
           returnKeyType="send"
           onSubmitEditing={handleSendMessage}
           blurOnSubmit={false}
+          editable={!sendMessageMutation.isPending}
         />
         <Pressable
           onPress={handleSendMessage}

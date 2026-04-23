@@ -1,8 +1,11 @@
 import { supabase } from "./supabase-client";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+import Constants from "expo-constants";
 
 const SUPABASE_SESSION_KEY = "supabase_session";
+const APP_VERSION_KEY = "app_version";
+const CURRENT_APP_VERSION = Constants.expoConfig?.version || "1.0.0";
 
 export interface AuthUser {
   id: string;
@@ -33,18 +36,26 @@ export async function signUpWithEmail(email: string, password: string) {
  */
 export async function signInWithEmail(email: string, password: string) {
   try {
+    console.log('[Auth] Starting sign in with email:', email);
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error('[Auth] Sign in error:', error);
+      throw error;
+    }
+    console.log('[Auth] Sign in successful, user:', data.user?.id);
 
     // Store session token for native platforms
     if (Platform.OS !== "web" && data.session?.access_token) {
+      console.log('[Auth] Storing session in SecureStore');
       await SecureStore.setItemAsync(SUPABASE_SESSION_KEY, JSON.stringify(data.session));
+      console.log('[Auth] Session stored successfully');
     }
 
+    console.log('[Auth] Returning user and session');
     return { user: data.user, session: data.session };
   } catch (error) {
     console.error("Sign in error:", error);
@@ -131,6 +142,31 @@ export async function updatePassword(newPassword: string) {
 }
 
 /**
+ * Clear old session if app version has changed
+ */
+export async function clearOldSessionIfVersionChanged() {
+  if (Platform.OS === "web") {
+    return;
+  }
+
+  try {
+    const storedVersion = await SecureStore.getItemAsync(APP_VERSION_KEY);
+    console.log('[Auth] Stored app version:', storedVersion, 'Current version:', CURRENT_APP_VERSION);
+    
+    if (storedVersion !== CURRENT_APP_VERSION) {
+      console.log('[Auth] App version changed, clearing old session data');
+      await SecureStore.deleteItemAsync(SUPABASE_SESSION_KEY);
+      await SecureStore.deleteItemAsync("supabase_access_token");
+      await SecureStore.deleteItemAsync("supabase_refresh_token");
+      // Store new version
+      await SecureStore.setItemAsync(APP_VERSION_KEY, CURRENT_APP_VERSION);
+    }
+  } catch (error) {
+    console.error('[Auth] Error checking app version:', error);
+  }
+}
+
+/**
  * Restore session from stored token (for native platforms)
  */
 export async function restoreSession() {
@@ -140,15 +176,24 @@ export async function restoreSession() {
   }
 
   try {
+    console.log('[Auth] Attempting to restore session from SecureStore');
     const sessionStr = await SecureStore.getItemAsync(SUPABASE_SESSION_KEY);
-    if (!sessionStr) return null;
+    if (!sessionStr) {
+      console.log('[Auth] No stored session found');
+      return null;
+    }
 
+    console.log('[Auth] Found stored session, restoring...');
     const session = JSON.parse(sessionStr);
     
     // Restore session in Supabase client
     const { data, error } = await supabase.auth.setSession(session);
-    if (error) throw error;
+    if (error) {
+      console.error('[Auth] Failed to restore session:', error);
+      throw error;
+    }
 
+    console.log('[Auth] Session restored successfully');
     return data.session;
   } catch (error) {
     console.error("Restore session error:", error);

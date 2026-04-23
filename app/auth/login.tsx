@@ -4,7 +4,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import { cn } from "@/lib/utils";
-import * as SupabaseAuth from "@/lib/supabase-auth";
+import * as SecureStore from "expo-secure-store";
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -22,10 +22,40 @@ export default function LoginScreen() {
 
     try {
       setLoading(true);
-      console.log("[Login] Attempting to sign in with:", email);
-      const result = await SupabaseAuth.signInWithEmail(email, password);
-      console.log("[Login] Sign in successful:", result.user?.email);
-      // Navigation will happen automatically through auth state change
+      console.log("[Login] Attempting backend login with:", email);
+      
+      // Get the API base URL
+      const apiUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:3000";
+      console.log("[Login] Using API URL:", apiUrl);
+      
+      // Call backend login endpoint
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Login failed");
+      }
+
+      const data = await response.json();
+      console.log("[Login] Backend login successful, user:", data.user?.email);
+      console.log("[Login] Access token received:", data.access_token ? "yes" : "no");
+      
+      // Store the access token for future API requests
+      if (data.access_token) {
+        console.log("[Login] Storing access token in SecureStore");
+        await SecureStore.setItemAsync("supabase_access_token", data.access_token);
+        if (data.refresh_token) {
+          await SecureStore.setItemAsync("supabase_refresh_token", data.refresh_token);
+        }
+      }
+      
+      // Navigate to chats
       console.log("[Login] Navigating to chats...");
       router.replace("/(tabs)/chats");
     } catch (error: any) {
