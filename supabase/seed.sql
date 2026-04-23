@@ -95,6 +95,18 @@ VALUES (
   NOW()
 ) ON CONFLICT (id) DO UPDATE SET updated_at = NOW();
 
+-- Add demo@rtrader.com user to all 8 chats (5 interactive + 3 info-only)
+INSERT INTO chat_participants (chat_id, user_id, role, joined_at)
+SELECT 
+  c.id,
+  p.id,
+  CASE WHEN c.type = 'info_only' THEN 'subscriber' ELSE 'participant' END,
+  NOW()
+FROM chats c
+CROSS JOIN profiles p
+WHERE p.email = 'demo@rtrader.com'
+ON CONFLICT (chat_id, user_id) DO NOTHING;
+
 -- Insert test chat settings (mute status for all chats)
 INSERT INTO chat_settings (chat_id, user_id, is_muted, created_at, updated_at)
 VALUES 
@@ -106,4 +118,17 @@ VALUES
   ('chat-6', 'cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd', false, NOW(), NOW()),
   ('chat-7', 'cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd', false, NOW(), NOW()),
   ('chat-8', 'cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd', false, NOW(), NOW())
+ON CONFLICT (chat_id, user_id) DO UPDATE SET updated_at = NOW();
+
+-- Add chat settings for demo@rtrader.com for all 8 chats
+INSERT INTO chat_settings (chat_id, user_id, is_muted, created_at, updated_at)
+SELECT 
+  c.id,
+  p.id,
+  false,
+  NOW(),
+  NOW()
+FROM chats c
+CROSS JOIN profiles p
+WHERE p.email = 'demo@rtrader.com'
 ON CONFLICT (chat_id, user_id) DO UPDATE SET updated_at = NOW();
