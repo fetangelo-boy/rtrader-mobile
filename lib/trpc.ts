@@ -30,17 +30,33 @@ export function createTRPCClient() {
           try {
             const { data: { session } } = await supabase.auth.getSession();
             const token = session?.access_token;
-            return token ? { Authorization: `Bearer ${token}` } : {};
+            if (token) {
+              console.log('[TRPC] Token found, length:', token.length);
+              return { Authorization: `Bearer ${token}` };
+            } else {
+              console.warn('[TRPC] No session token available');
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                console.warn('[TRPC] User exists but no session token');
+              }
+              return {};
+            }
           } catch (error) {
-            console.error("[TRPC] Failed to get Supabase session:", error);
+            console.error('[TRPC] Failed to get Supabase session:', error);
             return {};
           }
         },
         // Custom fetch to include credentials for cookie-based auth
         fetch(url, options) {
+          console.log('[TRPC] Fetch request to:', url);
           return fetch(url, {
             ...options,
             credentials: "include",
+          }).then(res => {
+            if (!res.ok) {
+              console.error('[TRPC] Response error:', res.status, res.statusText);
+            }
+            return res;
           });
         },
       }),

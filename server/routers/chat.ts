@@ -6,7 +6,10 @@ export const chatRouter = router({
   // Get list of chats for current user
   list: supabaseProtectedProcedure.query(async ({ ctx }: any) => {
     const userId = ctx.supabaseUser?.id;
-    if (!userId) throw new Error("Unauthorized");
+    if (!userId) {
+      console.error('[Chat.list] No user ID in context:', { user: ctx.supabaseUser });
+      throw new Error("Please login (10001)");
+    }
     const supabase = getServerSupabase();
 
     // First get chat IDs where user is a participant
@@ -70,7 +73,10 @@ export const chatRouter = router({
     )
     .query(async ({ input, ctx }: any) => {
       const userId = ctx.supabaseUser?.id;
-      if (!userId) throw new Error("Unauthorized");
+      if (!userId) {
+        console.error('[Chat.getMessages] No user ID in context:', { user: ctx.supabaseUser });
+        throw new Error("Please login (10001)");
+      }
       const supabase = getServerSupabase();
 
       // Check if user is participant
@@ -96,12 +102,12 @@ export const chatRouter = router({
           created_at,
           updated_at,
           reply_to_message_id,
-          profiles!user_id(username, avatar_url),
+          profiles(username, avatar_url),
           reply_to:messages!reply_to_message_id(
             id,
             content,
             user_id,
-            profiles!user_id(username)
+            profiles(username)
           )
         `
         )
