@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "expo-router";
 import { cn } from "@/lib/utils";
 import * as SecureStore from "expo-secure-store";
+import { getSupabaseClient } from "@/lib/supabase-client";
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -55,12 +56,39 @@ export default function LoginScreen() {
         }
       }
       
+      // CRITICAL: Set the session in Supabase client so supabase.auth.getSession() works on mobile
+      if (data.access_token && data.refresh_token) {
+        console.log("[Login] Setting Supabase session from backend tokens...");
+        const supabase = getSupabaseClient();
+        const { error: setSessionError } = await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        });
+        if (setSessionError) {
+          console.error("[Login] Failed to set Supabase session:", setSessionError);
+          throw new Error("Failed to set session: " + setSessionError.message);
+        }
+        console.log("[Login] Supabase session set successfully");
+      }
+      
       // Navigate to chats
       console.log("[Login] Navigating to chats...");
       router.replace("/(tabs)/chats");
     } catch (error: any) {
       console.error("[Login] Error:", error);
-      Alert.alert("Ошибка входа", error.message || "Не удалось войти в аккаунт");
+      
+      // Provide more helpful error messages
+      let errorMessage = error.message || "Не удалось войти в аккаунт";
+      
+      if (error.message?.includes("Network") || error.message?.includes("Failed to fetch")) {
+        errorMessage = "Ошибка сети. Проверьте интернет соединение и попробуйте снова.";
+      } else if (error.message?.includes("Invalid email or password")) {
+        errorMessage = "Неверный email или пароль.";
+      } else if (error.message?.includes("User not found")) {
+        errorMessage = "Пользователь не найден.";
+      }
+      
+      Alert.alert("Ошибка входа", errorMessage);
     } finally {
       setLoading(false);
     }

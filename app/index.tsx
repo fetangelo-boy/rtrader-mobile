@@ -23,7 +23,13 @@ export default function RootIndex() {
           // Clear old session if app version changed
           await SupabaseAuth.clearOldSessionIfVersionChanged();
           // Then restore session if available
-          await SupabaseAuth.restoreSession();
+          const restoredSession = await SupabaseAuth.restoreSession();
+          console.log("[Auth Check] Session restored:", restoredSession ? "yes" : "no");
+          
+          // Give Supabase time to update its internal state
+          if (restoredSession) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
         }
 
         const supabase = getSupabaseClient();
@@ -31,7 +37,17 @@ export default function RootIndex() {
           data: { session },
         } = await supabase.auth.getSession();
         console.log("[Auth Check] Session check result:", session ? "authenticated" : "not authenticated");
-        setIsAuthenticated(!!session);
+        
+        // If no session but we're on native, try one more time
+        if (!session && Platform.OS !== "web") {
+          console.log("[Auth Check] No session found, trying again...");
+          await new Promise(resolve => setTimeout(resolve, 500));
+          const { data: { session: retrySession } } = await supabase.auth.getSession();
+          console.log("[Auth Check] Retry result:", retrySession ? "authenticated" : "not authenticated");
+          setIsAuthenticated(!!retrySession);
+        } else {
+          setIsAuthenticated(!!session);
+        }
       } catch (error) {
         console.error("[Auth Check] Error:", error);
         setIsAuthenticated(false);

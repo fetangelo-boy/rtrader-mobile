@@ -26,9 +26,11 @@ export function createTRPCClient() {
         // tRPC v11: transformer MUST be inside httpBatchLink, not at root
         transformer: superjson,
         async headers() {
-          // Get Supabase session and extract access token
           try {
+            console.log('[TRPC] Getting session for headers...');
             const { data: { session } } = await supabase.auth.getSession();
+            console.log('[TRPC] Session retrieved:', session ? 'yes' : 'no');
+            
             const token = session?.access_token;
             if (token) {
               console.log('[TRPC] Token found, length:', token.length);
@@ -36,9 +38,7 @@ export function createTRPCClient() {
             } else {
               console.warn('[TRPC] No session token available');
               const { data: { user } } = await supabase.auth.getUser();
-              if (user) {
-                console.warn('[TRPC] User exists but no session token');
-              }
+              console.warn('[TRPC] User:', user ? user.email : 'null');
               return {};
             }
           } catch (error) {
