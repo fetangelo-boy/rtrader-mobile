@@ -102,13 +102,7 @@ export const chatRouter = router({
           created_at,
           updated_at,
           reply_to_message_id,
-          profiles(username, avatar_url),
-          reply_to:messages!reply_to_message_id(
-            id,
-            content,
-            user_id,
-            profiles(username)
-          )
+          profiles(username, avatar_url)
         `
         )
         .eq("chat_id", input.chatId)
@@ -116,7 +110,31 @@ export const chatRouter = router({
         .range(input.offset, input.offset + input.limit - 1);
 
       if (error) throw error;
-      return messages || [];
+
+      // Build a map of id -> message for resolving reply_to
+      const msgMap: Record<string, any> = {};
+      for (const m of messages || []) {
+        msgMap[m.id] = m;
+      }
+
+      // Attach replyTo data from the map
+      const messagesWithReply = (messages || []).map((m: any) => {
+        if (m.reply_to_message_id && msgMap[m.reply_to_message_id]) {
+          const parent = msgMap[m.reply_to_message_id];
+          return {
+            ...m,
+            reply_to_msg: {
+              id: parent.id,
+              content: parent.content,
+              user_id: parent.user_id,
+              profiles: parent.profiles,
+            },
+          };
+        }
+        return { ...m, reply_to_msg: null };
+      });
+
+      return messagesWithReply;
     }),
 
   // Send a message to a chat

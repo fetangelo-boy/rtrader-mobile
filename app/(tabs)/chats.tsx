@@ -216,8 +216,7 @@ export default function ChatsScreen() {
           data={chats}
           renderItem={renderChatItem}
           keyExtractor={(item) => item.id}
-          scrollEnabled={false}
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 80 }}
         />
       ) : (
         <View className="flex-1 items-center justify-center">

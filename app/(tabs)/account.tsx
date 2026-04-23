@@ -1,10 +1,12 @@
-import { View, Text, ScrollView, Pressable, Linking, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, Pressable, Linking, ActivityIndicator, Alert } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { VersionInfo } from "@/components/version-info";
 import { useColors } from "@/hooks/use-colors";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect } from "react";
+import { useRouter } from "expo-router";
+import * as SupabaseAuth from "@/lib/supabase-auth";
 
 interface Subscription {
   id: string;
@@ -61,6 +63,7 @@ const getPlanLabel = (plan: string) => {
 
 export default function AccountScreen() {
   const colors = useColors();
+  const router = useRouter();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -75,7 +78,9 @@ export default function AccountScreen() {
   }, [subData]);
 
   const handleSupport = () => {
-    console.log("Support clicked");
+    Linking.openURL("https://t.me/rtrader_support").catch(() => {
+      Alert.alert("Ошибка", "Не удалось открыть Telegram");
+    });
   };
 
   const handleRestoreAccess = () => {
@@ -83,11 +88,32 @@ export default function AccountScreen() {
   };
 
   const handleManageSubscription = () => {
-    console.log("Manage subscription clicked");
+    Linking.openURL("https://rtrader.ru/subscription").catch(() => {
+      Alert.alert("Ошибка", "Не удалось открыть страницу управления подпиской");
+    });
   };
 
   const handleLogout = () => {
-    console.log("Logout clicked");
+    Alert.alert(
+      "Выход",
+      "Вы уверены, что хотите выйти из аккаунта?",
+      [
+        { text: "Отмена", style: "cancel" },
+        {
+          text: "Выйти",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await SupabaseAuth.signOut();
+            } catch (e) {
+              console.error("Logout error:", e);
+            } finally {
+              router.replace("/auth/login");
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleSocialLink = (url: string) => {

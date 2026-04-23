@@ -88,8 +88,10 @@ export default function ChatDetailScreen() {
         const profile = msg.profiles;
         const author = (profile?.username && String(profile.username).trim()) ? String(profile.username).trim() : "Пользователь";
         
-        // reply_to is an array, need to check if it exists and has items
-        const replyToMsg = Array.isArray(msg.reply_to) && msg.reply_to.length > 0 ? msg.reply_to[0] : msg.reply_to;
+        // reply_to_msg is now a single object (or null) resolved server-side
+        const replyToMsg = msg.reply_to_msg && typeof msg.reply_to_msg === 'object' && !Array.isArray(msg.reply_to_msg)
+          ? msg.reply_to_msg
+          : null;
         
         return {
           id: msg.id,
