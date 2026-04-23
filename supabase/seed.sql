@@ -3,15 +3,16 @@
 -- 8 chats: 5 interactive + 3 info-only (read-only for subscribers)
 
 -- Insert test profile
-INSERT INTO profiles (id, email, full_name, subscription_status, created_at, updated_at)
+INSERT INTO profiles (id, email, full_name, username, subscription_status, created_at, updated_at)
 VALUES (
   'cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd',
   'test@rtrader.com',
   'Test User',
+  'Demo User',
   'active',
   NOW(),
   NOW()
-) ON CONFLICT (id) DO UPDATE SET updated_at = NOW();
+) ON CONFLICT (id) DO UPDATE SET updated_at = NOW(), username = 'Demo User';
 
 -- Insert 8 test chats (5 interactive + 3 info-only)
 INSERT INTO chats (id, name, description, type, created_at, updated_at)
@@ -27,6 +28,9 @@ VALUES
   ('chat-7', 'Интрадей и мысли', 'Интрадневные идеи и аналитические размышления', 'info_only', NOW(), NOW()),
   ('chat-8', 'Видео-разборы', 'Видеоматериалы и разборы торговых стратегий', 'info_only', NOW(), NOW())
 ON CONFLICT (id) DO UPDATE SET updated_at = NOW();
+
+-- Update demo@rtrader.com profile with username if it exists
+UPDATE profiles SET username = 'Demo User' WHERE email = 'demo@rtrader.com';
 
 -- Add test user as participant in all chats (as participant for interactive, subscriber for info-only)
 INSERT INTO chat_participants (chat_id, user_id, role, joined_at)

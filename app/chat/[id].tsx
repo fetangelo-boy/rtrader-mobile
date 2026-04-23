@@ -137,6 +137,14 @@ export default function ChatDetailScreen() {
     }
   };
 
+  const handleKeyPress = (e: any) => {
+    // On Android, send message on Enter key (without Shift)
+    if (Platform.OS === "android" && e.nativeEvent.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
   const handleReply = (message: Message) => {
     setReplyingTo(message);
   };
@@ -280,6 +288,7 @@ export default function ChatDetailScreen() {
           multiline={true}
           returnKeyType="send"
           onSubmitEditing={handleSendMessage}
+          onKeyPress={handleKeyPress}
           blurOnSubmit={false}
           editable={!sendMessageMutation.isPending}
         />

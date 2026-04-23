@@ -164,6 +164,24 @@ export function registerOAuthRoutes(app: Express) {
 
       console.log(`[Auth] Login successful for ${email}, user_id: ${data.user.id}`);
       
+      // Ensure profile exists and has username
+      const username = data.user.user_metadata?.name || email.split('@')[0];
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: data.user.id,
+          email: email,
+          username: username,
+          updated_at: new Date().toISOString(),
+        });
+      
+      if (profileError) {
+        console.error(`[Auth] Failed to update profile for ${email}:`, profileError);
+        // Don't fail login if profile update fails, just log it
+      } else {
+        console.log(`[Auth] Profile updated for ${email} with username: ${username}`);
+      }
+      
       // For mobile, we'll return the Supabase session directly
       // The mobile app can use this access_token with the API
 
@@ -174,7 +192,7 @@ export function registerOAuthRoutes(app: Express) {
         user: {
           id: data.user.id,
           email: data.user.email,
-          name: data.user.user_metadata?.name || data.user.email,
+          name: username,
         },
       });
     } catch (error) {
