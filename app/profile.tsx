@@ -16,6 +16,7 @@ import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
+import { updatePassword } from "@/lib/supabase-auth";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -94,6 +95,14 @@ export default function ProfileScreen() {
   const [localAvatarUri, setLocalAvatarUri] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+
+  // ── Change Password state ────────────────────────────────────────────────
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // ── tRPC queries & mutations ──────────────────────────────────────────────
   const utils = trpc.useUtils();
@@ -196,6 +205,46 @@ export default function ProfileScreen() {
       setSavingProfile(false);
     }
   }, [localAvatarUri, usernameInput, profile, uploadAvatarMutation, updateProfileMutation]);
+
+  // ── Change Password handler ───────────────────────────────────────────────
+  const handleChangePassword = useCallback(async () => {
+    const trimmedNew = newPassword.trim();
+    const trimmedConfirm = confirmPassword.trim();
+
+    if (trimmedNew.length < 6) {
+      Alert.alert("Ошибка", "Пароль должен содержать минимум 6 символов.");
+      return;
+    }
+
+    if (trimmedNew !== trimmedConfirm) {
+      Alert.alert("Ошибка", "Пароли не совпадают.");
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await updatePassword(trimmedNew);
+      Alert.alert("Готово", "Пароль успешно изменён.");
+      setNewPassword("");
+      setConfirmPassword("");
+      setShowPasswordForm(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+    } catch (err: any) {
+      const msg = err?.message || "Не удалось сменить пароль";
+      Alert.alert("Ошибка", msg);
+    } finally {
+      setChangingPassword(false);
+    }
+  }, [newPassword, confirmPassword]);
+
+  const handleCancelPasswordChange = useCallback(() => {
+    setNewPassword("");
+    setConfirmPassword("");
+    setShowPasswordForm(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+  }, []);
 
   // ── Render ────────────────────────────────────────────────────────────────
   if (isLoading) {
@@ -360,6 +409,152 @@ export default function ProfileScreen() {
             )}
           </Pressable>
         )}
+
+        {/* ── Change Password section ── */}
+        {!isEditing && (
+          <View style={styles.passwordSection}>
+            {!showPasswordForm ? (
+              <Pressable
+                onPress={() => setShowPasswordForm(true)}
+                style={({ pressed }) => [
+                  styles.changePasswordBtn,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <Text style={[styles.changePasswordBtnText, { color: colors.foreground }]}>
+                  🔑  Сменить пароль
+                </Text>
+              </Pressable>
+            ) : (
+              <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <View style={styles.fieldRow}>
+                  <Text style={[styles.fieldLabel, { color: colors.muted }]}>Новый пароль</Text>
+                  <View style={styles.passwordInputRow}>
+                    <TextInput
+                      value={newPassword}
+                      onChangeText={setNewPassword}
+                      placeholder="Минимум 6 символов"
+                      placeholderTextColor={colors.muted}
+                      secureTextEntry={!showNewPassword}
+                      returnKeyType="next"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      style={[
+                        styles.fieldInput,
+                        styles.passwordInput,
+                        {
+                          color: colors.foreground,
+                          borderColor: colors.primary,
+                          backgroundColor: colors.background,
+                        },
+                      ]}
+                    />
+                    <Pressable
+                      onPress={() => setShowNewPassword(!showNewPassword)}
+                      style={({ pressed }) => [
+                        styles.eyeBtn,
+                        { opacity: pressed ? 0.5 : 1 },
+                      ]}
+                    >
+                      <Text style={{ fontSize: 18 }}>{showNewPassword ? "🙈" : "👁"}</Text>
+                    </Pressable>
+                  </View>
+                </View>
+
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                <View style={styles.fieldRow}>
+                  <Text style={[styles.fieldLabel, { color: colors.muted }]}>Подтвердите пароль</Text>
+                  <View style={styles.passwordInputRow}>
+                    <TextInput
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      placeholder="Повторите пароль"
+                      placeholderTextColor={colors.muted}
+                      secureTextEntry={!showConfirmPassword}
+                      returnKeyType="done"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      style={[
+                        styles.fieldInput,
+                        styles.passwordInput,
+                        {
+                          color: colors.foreground,
+                          borderColor: colors.primary,
+                          backgroundColor: colors.background,
+                        },
+                      ]}
+                    />
+                    <Pressable
+                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                      style={({ pressed }) => [
+                        styles.eyeBtn,
+                        { opacity: pressed ? 0.5 : 1 },
+                      ]}
+                    >
+                      <Text style={{ fontSize: 18 }}>{showConfirmPassword ? "🙈" : "👁"}</Text>
+                    </Pressable>
+                  </View>
+                </View>
+
+                {/* Password match indicator */}
+                {confirmPassword.length > 0 && (
+                  <View style={styles.matchIndicator}>
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: newPassword === confirmPassword ? colors.success : colors.error,
+                      }}
+                    >
+                      {newPassword === confirmPassword ? "✓ Пароли совпадают" : "✗ Пароли не совпадают"}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Buttons */}
+                <View style={styles.passwordActions}>
+                  <Pressable
+                    onPress={handleCancelPasswordChange}
+                    style={({ pressed }) => [
+                      styles.passwordCancelBtn,
+                      {
+                        borderColor: colors.border,
+                        opacity: pressed ? 0.7 : 1,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.passwordCancelText, { color: colors.muted }]}>Отмена</Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={handleChangePassword}
+                    disabled={changingPassword || newPassword.length < 6 || newPassword !== confirmPassword}
+                    style={({ pressed }) => [
+                      styles.passwordSaveBtn,
+                      {
+                        backgroundColor:
+                          changingPassword || newPassword.length < 6 || newPassword !== confirmPassword
+                            ? colors.muted
+                            : colors.primary,
+                        opacity: pressed ? 0.8 : 1,
+                      },
+                    ]}
+                  >
+                    {changingPassword ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text style={styles.passwordSaveText}>Сменить</Text>
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
       </ScrollView>
     </ScreenContainer>
   );
@@ -500,6 +695,66 @@ const styles = StyleSheet.create({
   saveBtnText: {
     color: "#fff",
     fontSize: 16,
+    fontWeight: "600",
+  },
+  // ── Change Password styles ──
+  passwordSection: {
+    marginTop: 8,
+  },
+  changePasswordBtn: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: "center",
+  },
+  changePasswordBtnText: {
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  passwordInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  passwordInput: {
+    flex: 1,
+  },
+  eyeBtn: {
+    padding: 8,
+    marginTop: 4,
+  },
+  matchIndicator: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  passwordActions: {
+    flexDirection: "row",
+    gap: 12,
+    padding: 16,
+    paddingTop: 8,
+  },
+  passwordCancelBtn: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  passwordCancelText: {
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  passwordSaveBtn: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  passwordSaveText: {
+    color: "#fff",
+    fontSize: 15,
     fontWeight: "600",
   },
 });

@@ -1,0 +1,14 @@
+# RTrader Telegram Bot — Переменные окружения
+# Скопируйте в .env и заполните значениями
+
+# Telegram Bot Token (от @BotFather)
+BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
+
+# URL backend API (без trailing slash)
+RTRADER_API_URL=https://rtradermob-gjsezgkc.manus.space
+
+# Admin API Key (тот же, что в приложении)
+ADMIN_API_KEY=your-admin-api-key-here
+
+# Telegram ID администратора (число, узнать через @userinfobot)
+ADMIN_CHAT_ID=123456789
