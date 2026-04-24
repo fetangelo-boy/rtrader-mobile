@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, Pressable, Linking, ActivityIndicator, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable, Linking, ActivityIndicator, Alert, StyleSheet } from "react-native";
+import { Image } from "expo-image";
 import { ScreenContainer } from "@/components/screen-container";
 import { VersionInfo } from "@/components/version-info";
 import { useColors } from "@/hooks/use-colors";
@@ -61,6 +62,147 @@ const getPlanLabel = (plan: string) => {
   }
 };
 
+// ─── Profile Card ─────────────────────────────────────────────────────────────
+
+function ProfileCard({
+  colors,
+  onEdit,
+}: {
+  colors: ReturnType<typeof useColors>;
+  onEdit: () => void;
+}) {
+  const { data: profile, isLoading } = trpc.profile.getProfile.useQuery();
+
+  const displayName = profile?.username || profile?.email?.split("@")[0] || "Пользователь";
+  const initials = displayName
+    .split(" ")
+    .map((w: string) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  return (
+    <View
+      style={[
+        profileStyles.card,
+        { borderBottomColor: colors.border, backgroundColor: colors.background },
+      ]}
+    >
+      {/* Avatar */}
+      {isLoading ? (
+        <View
+          style={[
+            profileStyles.avatarPlaceholder,
+            { backgroundColor: colors.surface },
+          ]}
+        />
+      ) : profile?.avatar_url ? (
+        <Image
+          source={{ uri: profile.avatar_url }}
+          style={profileStyles.avatar}
+          contentFit="cover"
+        />
+      ) : (
+        <View
+          style={[profileStyles.avatarPlaceholder, { backgroundColor: colors.primary }]}
+        >
+          <Text style={profileStyles.avatarInitials}>{initials}</Text>
+        </View>
+      )}
+
+      {/* Info */}
+      <View style={profileStyles.info}>
+        {isLoading ? (
+          <ActivityIndicator size="small" color={colors.primary} />
+        ) : (
+          <>
+            <Text
+              style={[profileStyles.displayName, { color: colors.foreground }]}
+              numberOfLines={1}
+            >
+              {displayName}
+            </Text>
+            <Text
+              style={[profileStyles.email, { color: colors.muted }]}
+              numberOfLines={1}
+            >
+              {profile?.email || ""}
+            </Text>
+          </>
+        )}
+      </View>
+
+      {/* Edit button */}
+      <Pressable
+        onPress={onEdit}
+        style={({ pressed }) => [
+          profileStyles.editBtn,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            opacity: pressed ? 0.7 : 1,
+          },
+        ]}
+      >
+        <Text style={[profileStyles.editBtnText, { color: colors.primary }]}>
+          Изменить
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const profileStyles = StyleSheet.create({
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 12,
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
+  avatarPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarInitials: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  info: {
+    flex: 1,
+    gap: 2,
+  },
+  displayName: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  email: {
+    fontSize: 13,
+  },
+  editBtn: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  editBtnText: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+});
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
+
 export default function AccountScreen() {
   const colors = useColors();
   const router = useRouter();
@@ -81,10 +223,6 @@ export default function AccountScreen() {
     Linking.openURL("https://t.me/rtrader_support").catch(() => {
       Alert.alert("Ошибка", "Не удалось открыть Telegram");
     });
-  };
-
-  const handleRestoreAccess = () => {
-    console.log("Restore access clicked");
   };
 
   const handleManageSubscription = () => {
@@ -138,6 +276,9 @@ export default function AccountScreen() {
         <View className="px-4 py-4 border-b" style={{ borderBottomColor: colors.border }}>
           <Text className="text-2xl font-bold text-foreground">Аккаунт</Text>
         </View>
+
+        {/* Профиль пользователя */}
+        <ProfileCard colors={colors} onEdit={() => router.push("/profile")} />
 
         {/* Статус подписки */}
         {subscription && (
@@ -276,7 +417,7 @@ export default function AccountScreen() {
           </Pressable>
         </View>
       </ScrollView>
-      
+
       {/* Version Info */}
       <VersionInfo />
     </ScreenContainer>
