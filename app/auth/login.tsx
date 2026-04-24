@@ -1,11 +1,12 @@
-import { View, Text, TextInput, TouchableOpacity, Pressable, ActivityIndicator, Alert, ScrollView } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Pressable, ActivityIndicator, Alert, ScrollView, Linking } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useState } from "react";
 import { useRouter } from "expo-router";
-import { cn } from "@/lib/utils";
 import * as SecureStore from "expo-secure-store";
 import { getSupabaseClient } from "@/lib/supabase-client";
+
+const TELEGRAM_BOT_URL = "https://t.me/rtrader_bot";
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -23,18 +24,10 @@ export default function LoginScreen() {
 
     try {
       setLoading(true);
-      console.log("[Login] Attempting backend login with:", email);
-      
-      // Get the API base URL
       const apiUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:3000";
-      console.log("[Login] Using API URL:", apiUrl);
-      
-      // Call backend login endpoint
       const response = await fetch(`${apiUrl}/api/auth/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
@@ -44,62 +37,43 @@ export default function LoginScreen() {
       }
 
       const data = await response.json();
-      console.log("[Login] Backend login successful, user:", data.user?.email);
-      console.log("[Login] Access token received:", data.access_token ? "yes" : "no");
-      
-      // Store the access token for future API requests
+
       if (data.access_token) {
-        console.log("[Login] Storing access token in SecureStore");
         await SecureStore.setItemAsync("supabase_access_token", data.access_token);
         if (data.refresh_token) {
           await SecureStore.setItemAsync("supabase_refresh_token", data.refresh_token);
         }
       }
-      
-      // CRITICAL: Set the session in Supabase client so supabase.auth.getSession() works on mobile
+
       if (data.access_token && data.refresh_token) {
-        console.log("[Login] Setting Supabase session from backend tokens...");
         const supabase = getSupabaseClient();
         const { error: setSessionError } = await supabase.auth.setSession({
           access_token: data.access_token,
           refresh_token: data.refresh_token,
         });
         if (setSessionError) {
-          console.error("[Login] Failed to set Supabase session:", setSessionError);
           throw new Error("Failed to set session: " + setSessionError.message);
         }
-        console.log("[Login] Supabase session set successfully");
       }
-      
-      // Navigate to chats
-      console.log("[Login] Navigating to chats...");
+
       router.replace("/(tabs)/chats");
     } catch (error: any) {
-      console.error("[Login] Error:", error);
-      
-      // Provide more helpful error messages
       let errorMessage = error.message || "Не удалось войти в аккаунт";
-      
       if (error.message?.includes("Network") || error.message?.includes("Failed to fetch")) {
-        errorMessage = "Ошибка сети. Проверьте интернет соединение и попробуйте снова.";
+        errorMessage = "Ошибка сети. Проверьте интернет-соединение.";
       } else if (error.message?.includes("Invalid email or password")) {
         errorMessage = "Неверный email или пароль.";
       } else if (error.message?.includes("User not found")) {
         errorMessage = "Пользователь не найден.";
       }
-      
       Alert.alert("Ошибка входа", errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSignUp = () => {
-    router.push("signup" as any);
-  };
-
-  const handleForgotPassword = () => {
-    router.push("forgot-password" as any);
+  const handleGetAccess = () => {
+    Linking.openURL(TELEGRAM_BOT_URL);
   };
 
   return (
@@ -145,6 +119,8 @@ export default function LoginScreen() {
                 placeholderTextColor={colors.muted}
                 secureTextEntry={!showPassword}
                 editable={!loading}
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
                 className="flex-1 px-4 py-3 text-foreground"
               />
               <Pressable
@@ -165,7 +141,7 @@ export default function LoginScreen() {
               backgroundColor: colors.primary,
               borderRadius: 8,
               paddingVertical: 14,
-              marginBottom: 12,
+              marginBottom: 24,
             }}
           >
             {loading ? (
@@ -177,33 +153,37 @@ export default function LoginScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Forgot Password Link */}
-          <TouchableOpacity
-            onPress={handleForgotPassword}
-            disabled={loading}
-            style={{ marginBottom: 24 }}
-          >
-            <Text className="text-center text-sm text-primary">
-              Забыли пароль?
-            </Text>
-          </TouchableOpacity>
-
           {/* Divider */}
           <View className="flex-row items-center mb-6">
             <View className="flex-1 h-px" style={{ backgroundColor: colors.border }} />
-            <Text className="px-3 text-xs text-muted">или</Text>
+            <Text className="px-3 text-xs text-muted">нет аккаунта?</Text>
             <View className="flex-1 h-px" style={{ backgroundColor: colors.border }} />
           </View>
 
-          {/* Sign Up Link */}
-          <View className="flex-row justify-center">
-            <Text className="text-sm text-muted">Нет аккаунта? </Text>
-            <TouchableOpacity onPress={handleSignUp} disabled={loading}>
-              <Text className="text-sm font-semibold text-primary">
-                Зарегистрироваться
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {/* Get Access via Telegram Bot */}
+          <TouchableOpacity
+            onPress={handleGetAccess}
+            activeOpacity={0.8}
+            style={{
+              backgroundColor: "#0088cc",
+              borderRadius: 8,
+              paddingVertical: 14,
+              flexDirection: "row",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <Text style={{ fontSize: 18 }}>✈️</Text>
+            <Text style={{ color: "#ffffff", fontWeight: "600", fontSize: 15 }}>
+              Получить доступ через Telegram
+            </Text>
+          </TouchableOpacity>
+
+          {/* Help text */}
+          <Text className="text-xs text-muted text-center mt-4 px-4" style={{ lineHeight: 18 }}>
+            Для получения доступа оплатите подписку через нашего Telegram-бота. После проверки оплаты вам будут отправлены логин и пароль.
+          </Text>
         </View>
       </ScrollView>
     </ScreenContainer>

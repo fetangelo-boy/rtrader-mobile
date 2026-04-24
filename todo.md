@@ -143,3 +143,20 @@
 - [x] Экран "Подписка истекла" с кнопкой перехода к боту
 - [x] Vitest тест для валидации ADMIN_API_KEY
 - [x] Документация API для Telegram-бота
+
+## Subscription Request System MVP 🚀
+- [x] Создать таблицу subscription_requests (MySQL/TiDB via Drizzle)
+- [x] POST /api/requests/create — создание заявки (публичный)
+- [x] POST /api/requests/upload-receipt — загрузка чека в S3 (публичный)
+- [x] GET /api/admin/requests — список заявок (admin)
+- [x] GET /api/admin/requests/:id — детали заявки (admin)
+- [x] POST /api/admin/requests/:id/approve — одобрение + execute (admin)
+- [x] POST /api/admin/requests/:id/reject — отклонение (admin)
+- [x] Execute logic: различение нового vs существующего пользователя
+- [x] Убрать кнопку "Зарегистрироваться" с экрана логина
+- [x] Добавить "Получить доступ через Telegram" кнопку
+- [x] Обновить signup.tsx → редирект на Telegram-бота
+- [x] Обновить admin-api-docs.md с новым request flow
+- [x] Исправить "Invalid Date" на экране Аккаунта (expires_at → current_period_end)
+- [ ] Показывать статус заявки на экране Аккаунта
+- [ ] Обновить subscription-expired с кнопками Telegram + Email

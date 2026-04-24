@@ -1,0 +1,22 @@
+CREATE TABLE `subscription_requests` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`channel` enum('telegram','email') NOT NULL,
+	`status` enum('pending_review','approved','rejected','executed','failed') NOT NULL DEFAULT 'pending_review',
+	`telegramId` varchar(64),
+	`telegramName` varchar(255),
+	`email` varchar(320),
+	`contactName` varchar(255),
+	`receiptUrl` text,
+	`receiptText` text,
+	`adminNote` text,
+	`approvedUntil` timestamp,
+	`approvedPlan` varchar(64),
+	`approvedBy` varchar(255),
+	`supabaseUserId` varchar(64),
+	`isNewUser` int,
+	`executedAt` timestamp,
+	`errorMessage` text,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `subscription_requests_id` PRIMARY KEY(`id`)
+);

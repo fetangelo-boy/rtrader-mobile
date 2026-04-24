@@ -30,6 +30,11 @@ export const accountRouter = router({
       };
     }
 
-    return subscription;
+    // Normalize field names: Supabase uses expires_at, client expects current_period_end
+    return {
+      ...subscription,
+      current_period_end: subscription.expires_at || subscription.current_period_end || null,
+      created_at: subscription.started_at || subscription.created_at,
+    };
   }),
 });

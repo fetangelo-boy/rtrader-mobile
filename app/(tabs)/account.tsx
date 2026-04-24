@@ -306,7 +306,9 @@ export default function AccountScreen() {
               <View className="flex-row justify-between">
                 <Text className="text-sm text-muted">Окончание:</Text>
                 <Text className="text-sm font-semibold text-foreground">
-                  {new Date(subscription.current_period_end).toLocaleDateString("ru-RU")}
+                  {subscription.current_period_end
+                    ? new Date(subscription.current_period_end).toLocaleDateString("ru-RU")
+                    : "—"}
                 </Text>
               </View>
             </View>
