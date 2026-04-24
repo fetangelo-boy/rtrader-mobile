@@ -5,6 +5,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
+import { useSubscriptionGuard } from "@/hooks/use-subscription-guard";
+import { SubscriptionExpired } from "@/components/subscription-expired";
 
 interface ChatItem {
   id: string;
@@ -18,6 +20,9 @@ interface ChatItem {
 export default function ChatsScreen() {
   const colors = useColors();
   const router = useRouter();
+
+  // All hooks MUST be called before any early return (React rules of hooks)
+  const { status: subStatus, subscription: subData } = useSubscriptionGuard();
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +43,6 @@ export default function ChatsScreen() {
   }, [chatsLoading, queryError, chatsList]);
 
   // Mute settings are loaded lazily - default to false (unmuted)
-
   useEffect(() => {
     if (queryError) {
       console.error('[ChatsScreen] Setting error state:', queryError);
@@ -51,8 +55,8 @@ export default function ChatsScreen() {
       console.log('[ChatsScreen] Formatting chats:', chatsList.length);
       const formattedChats: ChatItem[] = chatsList.map((chat: any) => ({
         id: chat.id,
-        title: chat.name || chat.title || chat.id, // API returns 'name'
-        type: chat.type || 'interactive', // API returns 'type'
+        title: chat.name || chat.title || chat.id,
+        type: chat.type || 'interactive',
         created_at: chat.created_at,
         isMuted: muteStatus[chat.id] || false,
         unreadCount: 0,
@@ -74,7 +78,7 @@ export default function ChatsScreen() {
           setError('Загрузка чатов занимает слишком долго. Попробуйте перезагрузить приложение.');
           setLoading(false);
         }
-      }, 10000); // 10 second timeout
+      }, 10000);
       return () => clearTimeout(timeout);
     }
   }, [loading, chatsLoading]);
@@ -84,6 +88,11 @@ export default function ChatsScreen() {
     console.log('[ChatsScreen] Mounted');
   }, []);
 
+  // ─── Subscription guard ─── block access if expired (after all hooks)
+  if (subStatus === "expired") {
+    return <SubscriptionExpired expiresAt={subData?.expires_at || subData?.current_period_end} />;
+  }
+
   const handleChatPress = (chatId: string) => {
     router.push(`/chat/${chatId}`);
   };
@@ -91,7 +100,6 @@ export default function ChatsScreen() {
   const toggleMute = async (chatId: string, e: any) => {
     e.stopPropagation();
     const currentMuted = muteStatus[chatId] || false;
-    // Optimistically update UI
     const newMuted = !currentMuted;
     setMuteStatus((prev) => ({ ...prev, [chatId]: newMuted }));
     setChats((prev) =>

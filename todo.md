@@ -130,3 +130,16 @@
 - [x] Загрузка аватара на S3 через tRPC backend
 - [x] Обновление имени пользователя через tRPC backend
 - [x] Карточка профиля на экране Аккаунта (аватар + имя + email + кнопка "Изменить")
+
+## Subscription Access System (Variant A) 🔐
+- [x] Добавить поле telegram_id в user_metadata Supabase Auth
+- [x] API-эндпоинт POST /api/admin/create-subscriber (для Telegram-бота)
+- [x] API-эндпоинт POST /api/admin/renew-subscription (продление подписки)
+- [x] API-эндпоинт POST /api/admin/reset-password (сброс пароля)
+- [x] API-эндпоинт POST /api/admin/block-subscriber (блокировка)
+- [x] API-эндпоинт GET /api/admin/subscriber-status (статус подписчика)
+- [x] Защита admin API через ADMIN_API_KEY + X-Admin-Key заголовок
+- [x] Проверка подписки при входе в чаты (useSubscriptionGuard)
+- [x] Экран "Подписка истекла" с кнопкой перехода к боту
+- [x] Vitest тест для валидации ADMIN_API_KEY
+- [x] Документация API для Telegram-бота
