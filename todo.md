@@ -160,3 +160,14 @@
 - [x] Исправить "Invalid Date" на экране Аккаунта (expires_at → current_period_end)
 - [ ] Показывать статус заявки на экране Аккаунта
 - [ ] Обновить subscription-expired с кнопками Telegram + Email
+
+## Smartphone Smoke Test Feedback (2026-04-24)
+- [x] FIX: После reply+send клавиатура закрывается
+- [x] FIX: Reply state сбрасывается после отправки
+- [x] FIX: После отправки сообщения автоскролл к новому сообщению
+- [x] UPDATE: Telegram ссылка → https://t.me/RTrader11
+- [x] UPDATE: VK ссылка → https://vk.com/RTrader11
+- [x] UPDATE: Дзен заменить на Сайт → https://Rtrader11.ru
+- [x] UPDATE: Служба поддержки → @rhodes4ever
+- [x] UPDATE: Управление подпиской → ссылка на бот подписки
+- [x] Подготовить тестовый скрипт для полного bot flow (create → approve → credentials → login)

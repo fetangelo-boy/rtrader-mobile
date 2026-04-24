@@ -71,9 +71,11 @@ export default function ChatDetailScreen() {
       setMessages((prev) => [...prev, newMsg]);
       setNewMessage("");
       setReplyingTo(null);
+      // Dismiss keyboard so user sees their sent message
+      Keyboard.dismiss();
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      }, 150);
     },
     onError: (error: any) => {
       console.error("Failed to send message:", error);
@@ -131,12 +133,7 @@ export default function ChatDetailScreen() {
       replyToMessageId: replyingTo?.id,
     });
     
-    // Keep keyboard open on Android
-    if (Platform.OS === "android") {
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
-    }
+    // Keyboard will be dismissed in onSuccess callback
   };
 
   const handleKeyPress = (e: any) => {

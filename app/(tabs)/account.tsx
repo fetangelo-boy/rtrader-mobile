@@ -220,14 +220,14 @@ export default function AccountScreen() {
   }, [subData]);
 
   const handleSupport = () => {
-    Linking.openURL("https://t.me/rtrader_support").catch(() => {
+    Linking.openURL("https://t.me/rhodes4ever").catch(() => {
       Alert.alert("Ошибка", "Не удалось открыть Telegram");
     });
   };
 
   const handleManageSubscription = () => {
-    Linking.openURL("https://rtrader.ru/subscription").catch(() => {
-      Alert.alert("Ошибка", "Не удалось открыть страницу управления подпиской");
+    Linking.openURL("https://t.me/rtrader_bot").catch(() => {
+      Alert.alert("Ошибка", "Не удалось открыть бот подписки");
     });
   };
 
@@ -321,7 +321,7 @@ export default function AccountScreen() {
 
           <View className="flex-row gap-3">
             <Pressable
-              onPress={() => handleSocialLink("https://t.me/rtrader")}
+              onPress={() => handleSocialLink("https://t.me/RTrader11")}
               style={({ pressed }) => [
                 {
                   opacity: pressed ? 0.7 : 1,
@@ -336,7 +336,7 @@ export default function AccountScreen() {
             </Pressable>
 
             <Pressable
-              onPress={() => handleSocialLink("https://vk.com/rtrader")}
+              onPress={() => handleSocialLink("https://vk.com/RTrader11")}
               style={({ pressed }) => [
                 {
                   opacity: pressed ? 0.7 : 1,
@@ -351,18 +351,18 @@ export default function AccountScreen() {
             </Pressable>
 
             <Pressable
-              onPress={() => handleSocialLink("https://dzen.ru/rtrader")}
+              onPress={() => handleSocialLink("https://Rtrader11.ru")}
               style={({ pressed }) => [
                 {
                   opacity: pressed ? 0.7 : 1,
                   backgroundColor: colors.surface,
-                  borderColor: "#ff0000",
+                  borderColor: "#4CAF50",
                   borderWidth: 1,
                 },
                 { borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, flex: 1 },
               ]}
             >
-              <Text className="text-center font-semibold text-foreground">Дзен</Text>
+              <Text className="text-center font-semibold text-foreground">Сайт</Text>
             </Pressable>
           </View>
         </View>
