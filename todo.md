@@ -171,3 +171,9 @@
 - [x] UPDATE: Служба поддержки → @rhodes4ever
 - [x] UPDATE: Управление подпиской → ссылка на бот подписки
 - [x] Подготовить тестовый скрипт для полного bot flow (create → approve → credentials → login)
+
+## Admin Approve Date Fix (2026-04-24)
+- [x] FIX: approve endpoint уже принимает точную дату (approved_until) — backend не менялся
+- [x] Обновлён пример бота: FSM state для ручного ввода даты вместо пресетов
+- [x] Обновлена API-документация с новым bot flow
+- [x] Проверен create flow с точной датой 15.07.2026 — expires_at корректный

@@ -27,17 +27,20 @@ X-Admin-Key: <ADMIN_API_KEY>
 Бот → Пользователь: "Чек принят, ожидайте"
 Бот → Админ: пересылка заявки с чеком
 
-Админ проверяет чек, задаёт дату окончания подписки
-
-Админ → Бот: одобрить / отклонить
-Бот → API: POST /api/admin/requests/{id}/approve (или reject)
+Админ проверяет чек
+Админ → Бот: нажимает "✅ Одобрить"
+Бот → Админ: "Введите дату окончания подписки (ДД.ММ.ГГГГ)"
+Админ → Бот: вводит точную дату, например "15.07.2026"
+Бот → API: POST /api/admin/requests/{id}/approve с approved_until="2026-07-15T23:59:59Z"
 API → Бот: результат (логин/пароль для нового или подтверждение для существующего)
-Бот → Пользователь: логин/пароль или "подписка продлена до..."
+Бот → Пользователь: логин/пароль или "подписка продлена до 15.07.2026"
 ```
+
+> **Важно:** Администратор всегда вводит точную дату вручную. Бот НЕ должен автоматически вычислять дату через +30/+90 дней. Дата задаётся администратором и передаётся в backend как есть.
 
 ---
 
-## Эндпоинты (Новый Request Flow)
+## Эндпоинты (Request Flow)
 
 ### 1. Загрузка чека
 
@@ -144,9 +147,11 @@ Content-Type: application/json
 
 | Поле | Тип | Обязательно | Описание |
 |------|-----|-------------|----------|
-| `approved_until` | string | Да | Дата окончания подписки (ISO 8601) |
+| `approved_until` | string | **Да** | **Точная дата** окончания подписки (ISO 8601). Администратор вводит вручную. |
 | `approved_plan` | string | Нет | План (по умолчанию `"premium"`) |
 | `admin_note` | string | Нет | Комментарий администратора |
+
+> **Формат даты:** Бот принимает от админа дату в формате `ДД.ММ.ГГГГ` (например, `15.07.2026`), конвертирует в ISO 8601 (`2026-07-15T23:59:59Z`) и передаёт в `approved_until`. Доступ выдаётся ровно до этой даты.
 
 **Ответ для нового пользователя:**
 ```json
@@ -160,7 +165,7 @@ Content-Type: application/json
   "password": "Xk9mP2qR",
   "subscription": {
     "plan": "premium",
-    "expires_at": "2026-06-01T00:00:00.000Z"
+    "expires_at": "2026-07-15T23:59:59.000Z"
   },
   "message": "Новый аккаунт создан. Логин: tg123456789@rtrader.app, Пароль: Xk9mP2qR"
 }
@@ -177,9 +182,9 @@ Content-Type: application/json
   "email": "tg123456789@rtrader.app",
   "subscription": {
     "plan": "premium",
-    "expires_at": "2026-09-01T00:00:00.000Z"
+    "expires_at": "2026-07-15T23:59:59.000Z"
   },
-  "message": "Подписка продлена до 31.08.2026"
+  "message": "Подписка продлена до 15.07.2026"
 }
 ```
 
@@ -228,15 +233,18 @@ Content-Type: application/json
 
 ---
 
-## Полный пример бота (aiogram 3.x)
+## Полный пример бота (aiogram 3.x) — с ручным вводом даты
 
 ```python
 import os
+import re
 import aiohttp
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
-from datetime import datetime, timedelta
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from datetime import datetime
 
 API_URL = os.getenv("RTRADER_API_URL")
 ADMIN_API_KEY = os.getenv("ADMIN_API_KEY")
@@ -244,6 +252,13 @@ ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID"))
 
 bot = Bot(token=os.getenv("BOT_TOKEN"))
 dp = Dispatcher()
+
+
+# --- FSM States ---
+# Используем FSM для ожидания ввода даты от администратора
+
+class AdminApproval(StatesGroup):
+    waiting_for_date = State()
 
 
 # --- Пользовательские хэндлеры ---
@@ -255,7 +270,7 @@ async def cmd_start(message: Message):
         "Для оформления подписки отправьте скриншот чека об оплате."
     )
 
-@dp.message(F.photo)
+@dp.message(F.photo, lambda m: m.chat.id != ADMIN_CHAT_ID)
 async def handle_receipt_photo(message: Message):
     """Пользователь отправил фото чека."""
     # 1. Скачать фото
@@ -294,11 +309,7 @@ async def handle_receipt_photo(message: Message):
 
     # 5. Переслать админу с кнопками
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="✅ 1 мес", callback_data=f"approve:{request_id}:30"),
-            InlineKeyboardButton(text="✅ 3 мес", callback_data=f"approve:{request_id}:90"),
-            InlineKeyboardButton(text="✅ 6 мес", callback_data=f"approve:{request_id}:180"),
-        ],
+        [InlineKeyboardButton(text="✅ Одобрить", callback_data=f"approve:{request_id}")],
         [InlineKeyboardButton(text="❌ Отклонить", callback_data=f"reject:{request_id}")],
     ])
 
@@ -317,11 +328,62 @@ async def handle_receipt_photo(message: Message):
 # --- Админские хэндлеры ---
 
 @dp.callback_query(F.data.startswith("approve:"))
-async def handle_approve(callback: CallbackQuery):
-    """Админ нажал кнопку одобрения."""
-    _, request_id, days = callback.data.split(":")
-    approved_until = (datetime.utcnow() + timedelta(days=int(days))).isoformat() + "Z"
+async def handle_approve_start(callback: CallbackQuery, state: FSMContext):
+    """Админ нажал '✅ Одобрить' — бот просит ввести дату."""
+    _, request_id = callback.data.split(":")
 
+    # Сохраняем request_id и message_id в FSM state
+    await state.update_data(
+        request_id=request_id,
+        admin_message_id=callback.message.message_id,
+        admin_caption=callback.message.caption,
+    )
+    await state.set_state(AdminApproval.waiting_for_date)
+
+    await callback.message.reply(
+        f"📅 Заявка #{request_id}\n\n"
+        f"Введите дату окончания подписки в формате ДД.ММ.ГГГГ\n"
+        f"Например: 15.07.2026"
+    )
+    await callback.answer()
+
+
+@dp.message(AdminApproval.waiting_for_date)
+async def handle_approve_date(message: Message, state: FSMContext):
+    """Админ ввёл дату — валидируем и отправляем approve."""
+    text = message.text.strip()
+
+    # Валидация формата ДД.ММ.ГГГГ
+    date_match = re.match(r'^(\d{1,2})\.(\d{1,2})\.(\d{4})$', text)
+    if not date_match:
+        await message.reply(
+            "❌ Неверный формат даты.\n"
+            "Введите дату в формате ДД.ММ.ГГГГ, например: 15.07.2026"
+        )
+        return
+
+    day, month, year = int(date_match.group(1)), int(date_match.group(2)), int(date_match.group(3))
+
+    try:
+        expiry_date = datetime(year, month, day, 23, 59, 59)
+    except ValueError:
+        await message.reply("❌ Некорректная дата. Проверьте день и месяц.")
+        return
+
+    # Проверка: дата должна быть в будущем
+    if expiry_date <= datetime.utcnow():
+        await message.reply("❌ Дата должна быть в будущем.")
+        return
+
+    # Получаем данные из FSM
+    data = await state.get_data()
+    request_id = data["request_id"]
+    admin_caption = data.get("admin_caption", "")
+
+    # Конвертируем в ISO 8601
+    approved_until = expiry_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Отправляем approve в backend
     async with aiohttp.ClientSession() as session:
         async with session.post(
             f"{API_URL}/api/admin/requests/{request_id}/approve",
@@ -330,29 +392,63 @@ async def handle_approve(callback: CallbackQuery):
         ) as resp:
             result = await resp.json()
 
-    if result.get("success"):
-        tg_id = result.get("telegram_id")
-        if result.get("is_new_user") and tg_id:
-            await bot.send_message(
-                int(tg_id),
-                f"🎉 Ваш аккаунт создан!\n\n"
-                f"📧 Логин: {result['email']}\n"
-                f"🔑 Пароль: {result['password']}\n"
-                f"📅 Подписка до: {result['subscription']['expires_at'][:10]}\n\n"
-                f"Скачайте приложение и войдите с этими данными."
-            )
-        elif tg_id:
-            await bot.send_message(
-                int(tg_id),
-                f"✅ Подписка продлена до {result['subscription']['expires_at'][:10]}"
-            )
+    await state.clear()
 
-        await callback.message.edit_caption(
-            caption=callback.message.caption + f"\n\n✅ Одобрено до {approved_until[:10]}",
-            reply_markup=None,
-        )
+    if result.get("success"):
+        # Уведомляем пользователя
+        if result.get("is_new_user"):
+            # Новый пользователь — отправляем логин и пароль
+            tg_id = None
+            # Получаем telegram_id из заявки
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f"{API_URL}/api/admin/requests/{request_id}",
+                    headers={"X-Admin-Key": ADMIN_API_KEY},
+                ) as resp:
+                    req_data = await resp.json()
+                    tg_id = req_data.get("telegramId")
+
+            if tg_id:
+                await bot.send_message(
+                    int(tg_id),
+                    f"🎉 Ваш аккаунт создан!\n\n"
+                    f"📧 Логин: {result['email']}\n"
+                    f"🔑 Пароль: {result['password']}\n"
+                    f"📅 Подписка до: {text}\n\n"
+                    f"Скачайте приложение и войдите с этими данными."
+                )
+        else:
+            # Существующий пользователь — подтверждение продления
+            tg_id = None
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f"{API_URL}/api/admin/requests/{request_id}",
+                    headers={"X-Admin-Key": ADMIN_API_KEY},
+                ) as resp:
+                    req_data = await resp.json()
+                    tg_id = req_data.get("telegramId")
+
+            if tg_id:
+                await bot.send_message(
+                    int(tg_id),
+                    f"✅ Подписка продлена до {text}"
+                )
+
+        # Обновляем сообщение админа
+        try:
+            await bot.edit_message_caption(
+                chat_id=ADMIN_CHAT_ID,
+                message_id=data.get("admin_message_id"),
+                caption=admin_caption + f"\n\n✅ Одобрено до {text}",
+                reply_markup=None,
+            )
+        except Exception:
+            pass
+
+        await message.reply(f"✅ Заявка #{request_id} одобрена до {text}")
     else:
-        await callback.answer(f"Ошибка: {result.get('error', 'unknown')}", show_alert=True)
+        await message.reply(f"❌ Ошибка: {result.get('error', 'unknown')}")
+
 
 @dp.callback_query(F.data.startswith("reject:"))
 async def handle_reject(callback: CallbackQuery):
@@ -381,9 +477,24 @@ async def handle_reject(callback: CallbackQuery):
             reply_markup=None,
         )
 
+    await callback.answer()
+
+
 if __name__ == "__main__":
     dp.run_polling(bot)
 ```
+
+---
+
+## Ключевые отличия от предыдущей версии бота
+
+| Было (пресеты) | Стало (ручная дата) |
+|-----------------|---------------------|
+| Кнопки "1 мес / 3 мес / 6 мес / 1 год" | Одна кнопка "✅ Одобрить" |
+| Бот сам считал дату (+30/+90 дней) | Бот просит админа ввести точную дату |
+| Дата вычислялась автоматически | Дата задаётся вручную администратором |
+| `callback_data=f"approve:{id}:30"` | `callback_data=f"approve:{id}"` + FSM state |
+| Нет валидации даты | Валидация формата ДД.ММ.ГГГГ + проверка "в будущем" |
 
 ---
 
