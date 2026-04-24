@@ -196,3 +196,12 @@
 - [x] systemd unit file
 - [x] Тест запуска бота в sandbox
 - [x] Deployment guide (запуск / перезапуск / логи / обновление)
+
+## Live Bot Deployment & E2E Test (2026-04-24)
+- [x] Получить реальные credentials (BOT_TOKEN, ADMIN_CHAT_ID)
+- [x] Запустить бота с реальными credentials
+- [x] Проверить логи и стабильность
+- [ ] Провести живой e2e тест (чек → approve → credentials → login)
+
+## Backend Fix (2026-04-24)
+- [x] Fix: replace require("@supabase/supabase-js") with ESM import in lib/supabase.ts (production build crash)
