@@ -189,3 +189,10 @@
 - [x] Добавлена кнопка «Сменить пароль» на экран профиля
 - [x] Форма смены пароля: новый пароль + подтверждение + show/hide + валидация
 - [x] Интеграция с supabase.auth.updateUser для смены пароля
+
+## Telegram Bot Deployment (2026-04-24)
+- [x] Production-hardening бота (graceful shutdown, retry, timeouts, health check)
+- [x] Dockerfile + docker-compose.yml
+- [x] systemd unit file
+- [x] Тест запуска бота в sandbox
+- [x] Deployment guide (запуск / перезапуск / логи / обновление)

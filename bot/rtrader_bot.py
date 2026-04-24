@@ -3,6 +3,8 @@ RTrader Telegram Bot — Управление подписками
 =============================================
 aiogram 3.x | FSM для ручного ввода даты | Интеграция с RTrader API
 
+Production-ready: graceful shutdown, HTTP timeouts, retry, signal handling.
+
 Основной flow:
   1. Подписчик отправляет скрин чека → бот загружает на сервер и создаёт заявку
   2. Бот пересылает заявку админу с кнопками "Одобрить" / "Отклонить"
@@ -12,19 +14,24 @@ aiogram 3.x | FSM для ручного ввода даты | Интеграци
   6. Бот отправляет подписчику логин/пароль (новый) или подтверждение (продление)
 
 Переменные окружения (.env):
-  BOT_TOKEN       — Telegram Bot Token от @BotFather
-  RTRADER_API_URL — URL backend API (например https://rtradermob-gjsezgkc.manus.space)
-  ADMIN_API_KEY   — Ключ для admin-эндпоинтов (X-Admin-Key)
-  ADMIN_CHAT_ID   — Telegram ID администратора (число)
+  BOT_TOKEN            — Telegram Bot Token от @BotFather
+  RTRADER_API_URL      — URL backend API (например https://rtradermob-gjsezgkc.manus.space)
+  ADMIN_API_KEY        — Ключ для admin-эндпоинтов (X-Admin-Key)
+  ADMIN_CHAT_ID        — Telegram ID администратора (число)
+  RTRADER_HTTP_TIMEOUT — Таймаут HTTP-запросов в секундах (по умолчанию 30)
 """
 
 import os
 import re
+import sys
+import signal
 import logging
 import asyncio
 from datetime import datetime, timezone
+from typing import Optional
 
 import aiohttp
+from aiohttp import ClientTimeout
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandStart
 from aiogram.types import (
@@ -32,7 +39,6 @@ from aiogram.types import (
     CallbackQuery,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
-    BufferedInputFile,
 )
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -51,12 +57,14 @@ BOT_TOKEN = os.environ["BOT_TOKEN"]
 API_URL = os.environ["RTRADER_API_URL"].rstrip("/")
 ADMIN_API_KEY = os.environ["ADMIN_API_KEY"]
 ADMIN_CHAT_ID = int(os.environ["ADMIN_CHAT_ID"])
+HTTP_TIMEOUT = int(os.environ.get("RTRADER_HTTP_TIMEOUT", "30"))
 
 # ─── Логирование ─────────────────────────────────────────────────────────────
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    stream=sys.stdout,
 )
 logger = logging.getLogger("rtrader_bot")
 
@@ -65,6 +73,26 @@ logger = logging.getLogger("rtrader_bot")
 bot = Bot(token=BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
+
+# Shared aiohttp session (создаётся при старте, закрывается при остановке)
+_http_session: Optional[aiohttp.ClientSession] = None
+
+
+async def get_http_session() -> aiohttp.ClientSession:
+    """Получить или создать shared HTTP-сессию с таймаутами."""
+    global _http_session
+    if _http_session is None or _http_session.closed:
+        timeout = ClientTimeout(total=HTTP_TIMEOUT, connect=10)
+        _http_session = aiohttp.ClientSession(timeout=timeout)
+    return _http_session
+
+
+async def close_http_session():
+    """Закрыть HTTP-сессию при остановке."""
+    global _http_session
+    if _http_session and not _http_session.closed:
+        await _http_session.close()
+        _http_session = None
 
 
 # ─── FSM States ──────────────────────────────────────────────────────────────
@@ -85,28 +113,49 @@ def admin_headers() -> dict:
 
 
 async def api_post(path: str, json: dict | None = None, headers: dict | None = None) -> dict:
-    """POST-запрос к RTrader API."""
+    """POST-запрос к RTrader API с retry."""
     url = f"{API_URL}{path}"
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=json, headers=headers) as resp:
-            data = await resp.json()
-            logger.info("POST %s → %s %s", path, resp.status, data.get("success", ""))
-            return data
+    session = await get_http_session()
+    last_error = None
+    for attempt in range(3):
+        try:
+            async with session.post(url, json=json, headers=headers) as resp:
+                data = await resp.json()
+                logger.info("POST %s → %s %s", path, resp.status, data.get("success", ""))
+                return data
+        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+            last_error = e
+            logger.warning("POST %s attempt %d failed: %s", path, attempt + 1, e)
+            if attempt < 2:
+                await asyncio.sleep(1 * (attempt + 1))
+    logger.error("POST %s failed after 3 attempts: %s", path, last_error)
+    return {"success": False, "error": f"HTTP error: {last_error}"}
 
 
 async def api_get(path: str, headers: dict | None = None) -> dict:
-    """GET-запрос к RTrader API."""
+    """GET-запрос к RTrader API с retry."""
     url = f"{API_URL}{path}"
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers) as resp:
-            data = await resp.json()
-            return data
+    session = await get_http_session()
+    last_error = None
+    for attempt in range(3):
+        try:
+            async with session.get(url, headers=headers) as resp:
+                data = await resp.json()
+                return data
+        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+            last_error = e
+            logger.warning("GET %s attempt %d failed: %s", path, attempt + 1, e)
+            if attempt < 2:
+                await asyncio.sleep(1 * (attempt + 1))
+    logger.error("GET %s failed after 3 attempts: %s", path, last_error)
+    return {"success": False, "error": f"HTTP error: {last_error}"}
 
 
 async def upload_receipt(file_bytes: bytes, filename: str = "receipt.jpg") -> str | None:
     """Загрузить чек на сервер, вернуть URL."""
     url = f"{API_URL}/api/requests/upload-receipt"
-    async with aiohttp.ClientSession() as session:
+    session = await get_http_session()
+    try:
         form = aiohttp.FormData()
         form.add_field("file", file_bytes, filename=filename, content_type="image/jpeg")
         async with session.post(url, data=form) as resp:
@@ -115,6 +164,9 @@ async def upload_receipt(file_bytes: bytes, filename: str = "receipt.jpg") -> st
                 return data["url"]
             logger.error("Upload receipt failed: %s", data)
             return None
+    except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+        logger.error("Upload receipt HTTP error: %s", e)
+        return None
 
 
 def parse_date(text: str) -> datetime | None:
@@ -165,6 +217,24 @@ async def cmd_help(message: Message):
         "5️⃣ Скачайте приложение RTrader и войдите\n\n"
         "По вопросам: @rhodes4ever"
     )
+
+
+@dp.message(Command("status"))
+async def cmd_status(message: Message):
+    """Команда /status — проверка здоровья бота и API."""
+    try:
+        result = await api_get("/api/health")
+        api_ok = result.get("ok", False)
+    except Exception:
+        api_ok = False
+
+    status_text = (
+        f"🤖 Бот: работает\n"
+        f"🌐 API: {'✅ доступен' if api_ok else '❌ недоступен'}\n"
+        f"📡 URL: {API_URL}\n"
+        f"⏱ Timeout: {HTTP_TIMEOUT}s"
+    )
+    await message.answer(status_text)
 
 
 @dp.message(F.photo, lambda m: m.chat.id != ADMIN_CHAT_ID)
@@ -238,16 +308,19 @@ async def handle_receipt_photo(message: Message):
 
     except Exception as e:
         logger.exception("Error handling receipt from %s", user.id)
-        await processing_msg.edit_text(
-            "❌ Произошла ошибка при обработке чека.\n"
-            "Попробуйте ещё раз или обратитесь в поддержку: @rhodes4ever"
-        )
+        try:
+            await processing_msg.edit_text(
+                "❌ Произошла ошибка при обработке чека.\n"
+                "Попробуйте ещё раз или обратитесь в поддержку: @rhodes4ever"
+            )
+        except Exception:
+            pass
 
 
 @dp.message(lambda m: m.chat.id != ADMIN_CHAT_ID and not m.photo)
 async def handle_unknown_message(message: Message):
     """Подписчик отправил текст (не фото) — подсказываем."""
-    # Игнорируем команды
+    # Игнорируем команды (кроме обработанных выше)
     if message.text and message.text.startswith("/"):
         return
     await message.answer(
@@ -446,8 +519,6 @@ async def handle_reject(callback: CallbackQuery):
     else:
         await callback.answer(f"Ошибка: {result.get('error', '?')}", show_alert=True)
 
-    await callback.answer()
-
 
 # ─── Команда для просмотра заявок ────────────────────────────────────────────
 
@@ -479,17 +550,60 @@ async def cmd_pending(message: Message):
 #  ЗАПУСК
 # ═══════════════════════════════════════════════════════════════════════════════
 
-async def main():
-    logger.info("Starting RTrader bot...")
+async def on_startup():
+    """Действия при старте бота."""
+    logger.info("Bot starting...")
     logger.info("API URL: %s", API_URL)
     logger.info("Admin chat ID: %s", ADMIN_CHAT_ID)
+    logger.info("HTTP timeout: %ds", HTTP_TIMEOUT)
 
+    # Проверяем доступность API
+    try:
+        result = await api_get("/api/health")
+        if result.get("ok"):
+            logger.info("API health check: OK")
+        else:
+            logger.warning("API health check: unexpected response %s", result)
+    except Exception as e:
+        logger.warning("API health check failed (bot will retry on requests): %s", e)
+
+    # Уведомляем админа о старте
+    try:
+        await bot.send_message(ADMIN_CHAT_ID, "🟢 RTrader бот запущен и готов к работе.")
+    except Exception as e:
+        logger.warning("Failed to notify admin about startup: %s", e)
+
+
+async def on_shutdown():
+    """Действия при остановке бота."""
+    logger.info("Bot shutting down...")
+    # Уведомляем админа об остановке
+    try:
+        await bot.send_message(ADMIN_CHAT_ID, "🔴 RTrader бот остановлен.")
+    except Exception:
+        pass
+    await close_http_session()
+    await bot.session.close()
+    logger.info("Bot stopped cleanly.")
+
+
+async def main():
     # Удаляем старые вебхуки (если были)
     await bot.delete_webhook(drop_pending_updates=True)
+
+    # Регистрируем startup/shutdown
+    dp.startup.register(on_startup)
+    dp.shutdown.register(on_shutdown)
 
     # Запускаем polling
     await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Bot interrupted by user (Ctrl+C)")
+    except Exception as e:
+        logger.critical("Bot crashed: %s", e, exc_info=True)
+        sys.exit(1)

@@ -1,0 +1,31 @@
+[Unit]
+Description=RTrader Telegram Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=rtrader
+Group=rtrader
+WorkingDirectory=/opt/rtrader-bot
+EnvironmentFile=/opt/rtrader-bot/.env
+ExecStart=/opt/rtrader-bot/venv/bin/python rtrader_bot.py
+Restart=always
+RestartSec=5
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=rtrader-bot
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/rtrader-bot
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

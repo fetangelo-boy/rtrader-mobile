@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  rtrader-bot:
+    build: .
+    container_name: rtrader-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Graceful shutdown timeout
+    stop_grace_period: 10s
