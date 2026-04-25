@@ -226,7 +226,9 @@ export default function AccountScreen() {
   };
 
   const handleManageSubscription = () => {
-    Linking.openURL("https://t.me/rtrader_mobapp_bot").catch(() => {
+    // ?start=renew opens the bot CHAT directly (not description page)
+    // and triggers the renewal flow in the bot
+    Linking.openURL("https://t.me/rtrader_mobapp_bot?start=renew").catch(() => {
       Alert.alert("Ошибка", "Не удалось открыть бот подписки");
     });
   };
@@ -319,103 +321,98 @@ export default function AccountScreen() {
         <View className="px-4 py-6 border-b" style={{ borderBottomColor: colors.border }}>
           <Text className="text-base font-semibold text-foreground mb-4">Следите за нами</Text>
 
-          <View className="flex-row gap-3">
+          <View style={socialStyles.row}>
             <Pressable
               onPress={() => handleSocialLink("https://t.me/RTrader11")}
               style={({ pressed }) => [
+                socialStyles.socialBtn,
                 {
                   opacity: pressed ? 0.7 : 1,
                   backgroundColor: colors.surface,
                   borderColor: "#0088cc",
-                  borderWidth: 1,
                 },
-                { borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, flex: 1 },
               ]}
             >
-              <Text className="text-center font-semibold text-foreground">Telegram</Text>
+              <Text style={[socialStyles.socialBtnText, { color: colors.foreground }]}>Telegram</Text>
             </Pressable>
 
             <Pressable
               onPress={() => handleSocialLink("https://vk.com/RTrader11")}
               style={({ pressed }) => [
+                socialStyles.socialBtn,
                 {
                   opacity: pressed ? 0.7 : 1,
                   backgroundColor: colors.surface,
                   borderColor: "#0077ff",
-                  borderWidth: 1,
                 },
-                { borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, flex: 1 },
               ]}
             >
-              <Text className="text-center font-semibold text-foreground">VK</Text>
+              <Text style={[socialStyles.socialBtnText, { color: colors.foreground }]}>VK</Text>
             </Pressable>
 
             <Pressable
               onPress={() => handleSocialLink("https://Rtrader11.ru")}
               style={({ pressed }) => [
+                socialStyles.socialBtn,
                 {
                   opacity: pressed ? 0.7 : 1,
                   backgroundColor: colors.surface,
                   borderColor: "#4CAF50",
-                  borderWidth: 1,
                 },
-                { borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, flex: 1 },
               ]}
             >
-              <Text className="text-center font-semibold text-foreground">Сайт</Text>
+              <Text style={[socialStyles.socialBtnText, { color: colors.foreground }]}>Сайт</Text>
             </Pressable>
           </View>
         </View>
 
         {/* Действия */}
-        <View className="px-4 py-6 space-y-3 flex-1">
+        <View style={actionStyles.container}>
+          {/* Управление подпиской — primary action */}
           <Pressable
             onPress={handleManageSubscription}
             style={({ pressed }) => [
+              actionStyles.primaryBtn,
               {
-                opacity: pressed ? 0.7 : 1,
                 backgroundColor: colors.primary,
+                opacity: pressed ? 0.85 : 1,
+                transform: [{ scale: pressed ? 0.98 : 1 }],
               },
-              { borderRadius: 8, paddingVertical: 12, paddingHorizontal: 16 },
             ]}
           >
-            <Text className="text-center font-semibold text-background">
-              Управление подпиской
-            </Text>
+            <Text style={actionStyles.primaryBtnText}>Управление подпиской</Text>
           </Pressable>
 
+          {/* Служба поддержки — secondary action */}
           <Pressable
             onPress={handleSupport}
             style={({ pressed }) => [
+              actionStyles.secondaryBtn,
               {
-                opacity: pressed ? 0.7 : 1,
                 backgroundColor: colors.surface,
                 borderColor: colors.border,
-                borderWidth: 1,
+                opacity: pressed ? 0.7 : 1,
+                transform: [{ scale: pressed ? 0.98 : 1 }],
               },
-              { borderRadius: 8, paddingVertical: 12, paddingHorizontal: 16 },
             ]}
           >
-            <Text className="text-center font-semibold text-foreground">
+            <Text style={[actionStyles.secondaryBtnText, { color: colors.foreground }]}>
               Служба поддержки
             </Text>
           </Pressable>
 
+          {/* Выход — destructive action */}
           <Pressable
             onPress={handleLogout}
             style={({ pressed }) => [
+              actionStyles.logoutBtn,
               {
                 opacity: pressed ? 0.7 : 1,
-                backgroundColor: colors.surface,
-                borderColor: colors.error,
-                borderWidth: 1,
+                transform: [{ scale: pressed ? 0.98 : 1 }],
               },
-              { borderRadius: 8, paddingVertical: 12, paddingHorizontal: 16 },
             ]}
           >
-            <Text className="text-center font-semibold text-error">
-              Выход
-            </Text>
+            <Text style={actionStyles.logoutBtnText}>Выход</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -425,3 +422,73 @@ export default function AccountScreen() {
     </ScreenContainer>
   );
 }
+
+// ─── Styles ──────────────────────────────────────────────────────────────────
+
+const socialStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  socialBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignItems: "center",
+  },
+  socialBtnText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+});
+
+const actionStyles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 24,
+    gap: 12,
+  },
+  primaryBtn: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  primaryBtnText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  secondaryBtn: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: "center",
+  },
+  secondaryBtnText: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  logoutBtn: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    backgroundColor: "transparent",
+  },
+  logoutBtnText: {
+    color: "#EF4444",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+});
