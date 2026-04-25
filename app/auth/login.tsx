@@ -1,23 +1,38 @@
 import { View, Text, TextInput, TouchableOpacity, Pressable, ActivityIndicator, Alert, ScrollView, Linking } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { useState } from "react";
-import { useRouter } from "expo-router";
+import { useState, useEffect } from "react";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { getSupabaseClient } from "@/lib/supabase-client";
 
-const TELEGRAM_BOT_URL = "https://t.me/rtrader_bot";
+const TELEGRAM_BOT_URL = "https://t.me/rtrader_vip_bot";
 
 export default function LoginScreen() {
   const colors = useColors();
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
+  // Handle deep link: rtrader://login?email=...&password=...
+  useEffect(() => {
+    if (params.email && params.password) {
+      const decodedEmail = decodeURIComponent(String(params.email));
+      const decodedPassword = decodeURIComponent(String(params.password));
+      setEmail(decodedEmail);
+      setPassword(decodedPassword);
+      // Auto-login after a short delay to ensure state is set
+      setTimeout(() => {
+        handleLoginWithCredentials(decodedEmail, decodedPassword);
+      }, 300);
+    }
+  }, [params.email, params.password]);
+
+  const handleLoginWithCredentials = async (emailVal: string, passwordVal: string) => {
+    if (!emailVal.trim() || !passwordVal.trim()) {
       Alert.alert("Ошибка", "Пожалуйста, заполните все поля");
       return;
     }
@@ -28,7 +43,7 @@ export default function LoginScreen() {
       const response = await fetch(`${apiUrl}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: emailVal, password: passwordVal }),
       });
 
       if (!response.ok) {
@@ -70,6 +85,10 @@ export default function LoginScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogin = async () => {
+    handleLoginWithCredentials(email, password);
   };
 
   const handleGetAccess = () => {

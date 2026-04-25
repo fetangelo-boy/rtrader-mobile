@@ -425,17 +425,29 @@ async def handle_approve_date(message: Message, state: FSMContext):
     tg_id = req_data.get("telegramId") or req_data.get("telegram_id")
 
     if result.get("is_new_user"):
-        # Новый пользователь — отправляем логин и пароль
+        # Новый пользователь — отправляем логин и пароль (с deep link)
         if tg_id:
             try:
-                await bot.send_message(
-                    int(tg_id),
+                # Генерируем deep link для автоматического входа
+                import urllib.parse
+                email_encoded = urllib.parse.quote(result['email'])
+                password_encoded = urllib.parse.quote(result['password'])
+                deep_link = f"rtrader://login?email={email_encoded}&password={password_encoded}"
+                
+                message_text = (
                     f"🎉 Ваш аккаунт создан!\n\n"
                     f"📧 Логин: {result['email']}\n"
                     f"🔑 Пароль: {result['password']}\n"
                     f"📅 Подписка до: {date_display}\n\n"
-                    f"Скачайте приложение RTrader и войдите с этими данными.\n"
+                    f"🔗 [Войти в приложение]({deep_link})\n\n"
+                    f"Или скачайте приложение RTrader и войдите вручную.\n"
                     f"Рекомендуем сменить пароль после первого входа."
+                )
+                
+                await bot.send_message(
+                    int(tg_id),
+                    message_text,
+                    parse_mode="Markdown"
                 )
             except Exception as e:
                 logger.warning("Failed to notify user %s: %s", tg_id, e)

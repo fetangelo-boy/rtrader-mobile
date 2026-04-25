@@ -208,6 +208,6 @@
 
 ## User Testing Feedback (2026-04-25)
 - [x] Fix: чаты не отображались у нового пользователя (role member→participant, добавлен в 8 чатов вручную + фикс в коде)
-- [ ] UX: облегчить ввод credentials — deep link или auto-fill из сообщения бота
-- [ ] Investigate: @rtrader_bot /start не отвечает (возможно другой бот, не rtrader_vip_bot)
+- [x] UX: облегчить ввод credentials — deep link rtrader://login?email=...&password=... реализован
+- [x] Investigate: @rtrader_vip_bot /start работает (обработчик есть, бот активен)
 - [ ] APK ссылка для скачивания (после завершения Publish/Build)
