@@ -217,23 +217,25 @@ export function registerAdminRoutes(app: Express) {
     if (!verifyAdminKey(req, res)) return;
 
     try {
-      const { telegram_id, days = 30, plan } = req.body;
+      const { telegram_id, email, days = 30, plan, approved_until } = req.body;
 
-      if (!telegram_id) {
+      if (!telegram_id && !email) {
         res.status(400).json({ error: "telegram_id is required" });
         return;
       }
 
       const supabase = getServerSupabase();
 
-      // Find user by telegram_id in user_metadata
+      // Find user by telegram_id or email
       const { data: usersData } = await supabase.auth.admin.listUsers();
       const user = usersData?.users?.find(
-        (u: any) => u.user_metadata?.telegram_id === String(telegram_id)
+        (u: any) =>
+          (telegram_id && u.user_metadata?.telegram_id === String(telegram_id)) ||
+          (email && u.email === email)
       );
 
       if (!user) {
-        res.status(404).json({ error: "User not found with this telegram_id" });
+        res.status(404).json({ error: "User not found with this telegram_id or email" });
         return;
       }
 
@@ -249,7 +251,19 @@ export function registerAdminRoutes(app: Express) {
       const now = new Date();
       let newExpiry: Date;
 
-      if (currentSub && currentSub.status === "active" && new Date(currentSub.expires_at) > now) {
+      if (approved_until) {
+        // Parse exact date in DD.MM.YYYY or ISO format
+        if (/^\d{2}\.\d{2}\.\d{4}$/.test(approved_until)) {
+          const [dd, mm, yyyy] = approved_until.split(".");
+          newExpiry = new Date(`${yyyy}-${mm}-${dd}T23:59:59.000Z`);
+        } else {
+          newExpiry = new Date(approved_until);
+        }
+        if (isNaN(newExpiry.getTime())) {
+          res.status(400).json({ error: "Invalid approved_until date format. Use DD.MM.YYYY or ISO string." });
+          return;
+        }
+      } else if (currentSub && currentSub.status === "active" && new Date(currentSub.expires_at) > now) {
         // Extend from current expiry
         newExpiry = new Date(new Date(currentSub.expires_at).getTime() + days * 24 * 60 * 60 * 1000);
       } else {
@@ -340,28 +354,30 @@ export function registerAdminRoutes(app: Express) {
     if (!verifyAdminKey(req, res)) return;
 
     try {
-      const { telegram_id } = req.body;
+      const { telegram_id, email, new_password } = req.body;
 
-      if (!telegram_id) {
-        res.status(400).json({ error: "telegram_id is required" });
+      if (!telegram_id && !email) {
+        res.status(400).json({ error: "telegram_id or email is required" });
         return;
       }
 
       const supabase = getServerSupabase();
 
-      // Find user by telegram_id
+      // Find user by telegram_id or email
       const { data: usersData } = await supabase.auth.admin.listUsers();
       const user = usersData?.users?.find(
-        (u: any) => u.user_metadata?.telegram_id === String(telegram_id)
+        (u: any) =>
+          (telegram_id && u.user_metadata?.telegram_id === String(telegram_id)) ||
+          (email && u.email === email)
       );
 
       if (!user) {
-        res.status(404).json({ error: "User not found with this telegram_id" });
+        res.status(404).json({ error: "User not found with this telegram_id or email" });
         return;
       }
 
-      // Generate new password
-      const newPassword = generatePassword(10);
+      // Use provided password or generate a new one
+      const newPassword = new_password || generatePassword(10);
 
       // Update password
       const { error } = await supabase.auth.admin.updateUserById(user.id, {

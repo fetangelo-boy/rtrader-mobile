@@ -236,3 +236,11 @@
 - [x] Add /start renew handler to bot for subscription renewal flow
 - [x] Polish account screen buttons (StyleSheet.create, consistent sizing, shadow, press feedback)
 - [x] E2E test: button → bot → receipt → admin approve → credentials → subscriber (PASSED)
+
+## Test Accounts for iPhone Testers (2026-04-25)
+- [x] Create tester1@rtrader.com with subscription until 2036-01-01 via admin API
+- [x] Create tester2@rtrader.com with subscription until 2036-01-01 via admin API
+- [x] Create tester3@rtrader.com with subscription until 2036-01-01 via admin API
+- [x] Generate deep links for all 3 accounts (exp:// scheme for Expo Go)
+- [x] Write updated tester instructions with auto-login deep links (TESTER_IPHONE_INSTRUCTIONS.txt)
+- [x] Updated admin.ts: renew-subscription and reset-password now accept email + exact approved_until date
