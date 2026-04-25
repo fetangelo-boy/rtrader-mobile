@@ -4,7 +4,7 @@ import { Alert } from "react-native";
 import * as SupabaseAuth from "@/lib/supabase-auth";
 import { useColors } from "@/hooks/use-colors";
 
-const TELEGRAM_BOT_URL = "https://t.me/rtrader_bot";
+const TELEGRAM_BOT_URL = "https://t.me/rtrader_mobapp_bot";
 
 export default function LoginScreen() {
   const colors = useColors();

@@ -6,7 +6,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { getSupabaseClient } from "@/lib/supabase-client";
 
-const TELEGRAM_BOT_URL = "https://t.me/rtrader_vip_bot";
+const TELEGRAM_BOT_URL = "https://t.me/rtrader_mobapp_bot";
 
 export default function LoginScreen() {
   const colors = useColors();

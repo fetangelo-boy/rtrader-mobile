@@ -211,3 +211,22 @@
 - [x] UX: облегчить ввод credentials — deep link rtrader://login?email=...&password=... реализован
 - [x] Investigate: @rtrader_vip_bot /start работает (обработчик есть, бот активен)
 - [ ] APK ссылка для скачивания (после завершения Publish/Build)
+
+## Bot Compatibility Diagnostic (2026-04-25)
+- [x] Диагностика: работает ли бот для сайта rtrader11.ru/club
+- [x] Сравнение flow сайта и приложения
+- [x] Определить root cause если сломано
+- [x] Предложить минимальный фикс без поломки app flow
+
+## Architecture Analysis (2026-04-25)
+- [x] Изучить репозиторий сайта rtrader-hub
+- [x] Сопоставить архитектуры сайта и приложения
+- [x] Архитектурный отчёт: единый backend
+- [x] Создать отдельного бота для регистрации в приложение (@rtrader_mobapp_bot)
+
+## Bot Split: Site vs App (2026-04-25)
+- [x] Switch rtrader_bot.py to new token (@rtrader_mobapp_bot)
+- [x] Restore webhook for @rtrader_vip_bot (site)
+- [x] Update bot links in mobile app (profile, account, login, signup, subscription-expired)
+- [x] Restart new bot and verify polling works
+- [x] Verify site bot webhook is active

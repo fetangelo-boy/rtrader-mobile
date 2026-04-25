@@ -3,7 +3,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 
-const TELEGRAM_BOT_URL = "https://t.me/rtrader_bot";
+const TELEGRAM_BOT_URL = "https://t.me/rtrader_mobapp_bot";
 
 /**
  * Full-screen overlay shown when the user's subscription has expired.

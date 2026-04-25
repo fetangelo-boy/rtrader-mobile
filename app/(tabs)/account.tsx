@@ -226,7 +226,7 @@ export default function AccountScreen() {
   };
 
   const handleManageSubscription = () => {
-    Linking.openURL("https://t.me/rtrader_bot").catch(() => {
+    Linking.openURL("https://t.me/rtrader_mobapp_bot").catch(() => {
       Alert.alert("Ошибка", "Не удалось открыть бот подписки");
     });
   };

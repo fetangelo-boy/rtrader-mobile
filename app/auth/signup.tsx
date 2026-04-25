@@ -2,7 +2,7 @@ import { View, Text, TouchableOpacity, Linking } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useRouter } from "expo-router";
 
-const TELEGRAM_BOT_URL = "https://t.me/rtrader_bot";
+const TELEGRAM_BOT_URL = "https://t.me/rtrader_mobapp_bot";
 
 export default function SignupScreen() {
   const router = useRouter();
