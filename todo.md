@@ -231,7 +231,8 @@
 - [x] Restart new bot and verify polling works
 - [x] Verify site bot webhook is active
 
-## Subscription Button + UI Polish (2026-04-25)
+## Subscription Button + UI Polish (2026-04-25) ✅ VERIFIED
 - [x] Fix: "Управление подпиской" opens bot description instead of chat → URL changed to ?start=renew
 - [x] Add /start renew handler to bot for subscription renewal flow
 - [x] Polish account screen buttons (StyleSheet.create, consistent sizing, shadow, press feedback)
+- [x] E2E test: button → bot → receipt → admin approve → credentials → subscriber (PASSED)
