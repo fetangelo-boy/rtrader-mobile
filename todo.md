@@ -201,7 +201,13 @@
 - [x] Получить реальные credentials (BOT_TOKEN, ADMIN_CHAT_ID)
 - [x] Запустить бота с реальными credentials
 - [x] Проверить логи и стабильность
-- [ ] Провести живой e2e тест (чек → approve → credentials → login)
+- [x] Провести живой e2e тест (чек → approve → credentials → login)
 
 ## Backend Fix (2026-04-24)
 - [x] Fix: replace require("@supabase/supabase-js") with ESM import in lib/supabase.ts (production build crash)
+
+## User Testing Feedback (2026-04-25)
+- [x] Fix: чаты не отображались у нового пользователя (role member→participant, добавлен в 8 чатов вручную + фикс в коде)
+- [ ] UX: облегчить ввод credentials — deep link или auto-fill из сообщения бота
+- [ ] Investigate: @rtrader_bot /start не отвечает (возможно другой бот, не rtrader_vip_bot)
+- [ ] APK ссылка для скачивания (после завершения Publish/Build)

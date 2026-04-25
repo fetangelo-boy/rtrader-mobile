@@ -405,16 +405,22 @@ export function registerRequestRoutes(app: Express) {
             updated_at: new Date().toISOString(),
           });
 
-          // Add to all chats
-          const { data: allChats } = await supabase.from("chats").select("id");
+          // Add to all chats (only main chats, not test/temp ones)
+          const { data: allChats } = await supabase.from("chats").select("id").like("id", "chat-%");
           if (allChats?.length) {
             const participantRows = allChats.map((chat: any) => ({
               chat_id: chat.id,
               user_id: userId,
-              role: "member",
-              joined_at: new Date().toISOString(),
+              role: "participant",
             }));
-            await supabase.from("chat_participants").insert(participantRows);
+            const { error: participantError } = await supabase.from("chat_participants").insert(participantRows);
+            if (participantError) {
+              console.error(`[Requests] #${id} chat_participants insert error:`, participantError.message);
+            } else {
+              console.log(`[Requests] #${id} added to ${participantRows.length} chats`);
+            }
+          } else {
+            console.warn(`[Requests] #${id} no chats found to add user to`);
           }
 
           // Mark request as executed
