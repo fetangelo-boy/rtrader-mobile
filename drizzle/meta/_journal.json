@@ -15,6 +15,13 @@
       "when": 1777054338640,
       "tag": "0001_unique_zuras",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1777413800251,
+      "tag": "0002_nosy_spiral",
+      "breakpoints": true
     }
   ]
 }

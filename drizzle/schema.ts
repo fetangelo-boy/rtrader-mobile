@@ -90,3 +90,32 @@ export const subscriptionRequests = mysqlTable("subscription_requests", {
 
 export type SubscriptionRequest = typeof subscriptionRequests.$inferSelect;
 export type InsertSubscriptionRequest = typeof subscriptionRequests.$inferInsert;
+
+/**
+ * Push notification tokens — stores Expo push tokens for each user.
+ * Used to send push notifications to users' devices.
+ */
+export const pushTokens = mysqlTable("push_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+
+  /** User ID (integer, matches users.id type) */
+  userId: int("userId").notNull(),
+
+  /** Expo push token */
+  token: text("token").notNull().unique(),
+
+  /** Platform: android, ios, or web */
+  platform: mysqlEnum("platform", ["android", "ios", "web"]).notNull(),
+
+  /** Whether token is active (user hasn't unregistered) */
+  isActive: int("isActive").default(1).notNull(),
+
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PushToken = typeof pushTokens.$inferSelect;
+export type InsertPushToken = typeof pushTokens.$inferInsert;
+
+// Add foreign key constraint if needed:
+// ALTER TABLE push_tokens ADD CONSTRAINT fk_push_tokens_user_id FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE;

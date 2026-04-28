@@ -107,6 +107,7 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    "expo-notifications",
     [
       "expo-audio",
       {
@@ -130,6 +131,14 @@ const config: ExpoConfig = {
         dark: {
           backgroundColor: "#000000",
         },
+      },
+    ],
+    [
+      "expo-notifications",
+      {
+        sounds: [
+          "./assets/sounds/notification.wav",
+        ],
       },
     ],
     [

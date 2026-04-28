@@ -248,7 +248,7 @@
 ## Android Release Preparation (2026-04-28)
 - [ ] Check bot @rtrader_mobapp_bot deployment status (sandbox vs production)
 - [x] Implement admin-only info chats UI (hide input for non-admins in info_only chats)
-- [ ] Apply RLS migration 20260428190000_allow_admin_post_info_only.sql via Supabase SQL Editor
+- [x] Apply RLS migration 20260428190000_allow_admin_post_info_only.sql via Supabase SQL Editor
 - [x] Update requests.ts to assign 'subscriber' role for info_only chats on approval
 - [x] Update chat.ts sendMessage to check chat type and user role
 - [x] Update getChatInfo to return userRole for the current user
