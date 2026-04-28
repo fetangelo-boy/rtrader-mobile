@@ -59,7 +59,19 @@ export const chatRouter = router({
         .single();
 
       if (error) throw error;
-      return chat;
+
+      // Get current user's role in this chat
+      const { data: participant } = await supabase
+        .from("chat_participants")
+        .select("role")
+        .eq("chat_id", input.chatId)
+        .eq("user_id", userId)
+        .single();
+
+      return {
+        ...chat,
+        userRole: participant?.role || "subscriber",
+      };
     }),
 
   // Get messages for a specific chat
@@ -151,16 +163,22 @@ export const chatRouter = router({
       if (!userId) throw new Error("Unauthorized");
       const supabase = getServerSupabase();
 
-      // Check if user is participant
+      // Check if user is participant and get their role + chat type
       const { data: participant, error: participantError } = await supabase
         .from("chat_participants")
-        .select("id")
+        .select("id, role, chats!chat_id(type)")
         .eq("chat_id", input.chatId)
         .eq("user_id", userId)
         .single();
 
       if (participantError || !participant) {
         throw new Error("Not a participant of this chat");
+      }
+
+      // For info_only chats, only admins can send messages
+      const chatType = (participant as any).chats?.type;
+      if (chatType === "info_only" && (participant as any).role !== "admin") {
+        throw new Error("Этот канал только для чтения. Публиковать может только администратор.");
       }
 
       // Insert message

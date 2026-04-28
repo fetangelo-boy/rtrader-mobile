@@ -244,3 +244,22 @@
 - [x] Generate deep links for all 3 accounts (exp:// scheme for Expo Go)
 - [x] Write updated tester instructions with auto-login deep links (TESTER_IPHONE_INSTRUCTIONS.txt)
 - [x] Updated admin.ts: renew-subscription and reset-password now accept email + exact approved_until date
+
+## Android Release Preparation (2026-04-28)
+- [ ] Check bot @rtrader_mobapp_bot deployment status (sandbox vs production)
+- [x] Implement admin-only info chats UI (hide input for non-admins in info_only chats)
+- [ ] Apply RLS migration 20260428190000_allow_admin_post_info_only.sql via Supabase SQL Editor
+- [x] Update requests.ts to assign 'subscriber' role for info_only chats on approval
+- [x] Update chat.ts sendMessage to check chat type and user role
+- [x] Update getChatInfo to return userRole for the current user
+- [ ] Implement push notifications for subscribers (new messages, subscription events)
+- [ ] Research free/cheap VPS in Russia for bot + RF-circuit deployment
+- [ ] Final pre-release verification
+- [ ] Save checkpoint and Publish APK
+
+## Russian Backend Hosting (2026-04-28)
+- [ ] Research Beget VPS/cloud for Node.js + PostgreSQL
+- [ ] Compare alternatives (Timeweb, Selectel, REG.RU)
+- [ ] Evaluate free/cheap tiers for initial launch
+- [ ] Prepare migration plan from Supabase to Russian backend
+- [ ] Deploy backend + bot + PostgreSQL on Russian server

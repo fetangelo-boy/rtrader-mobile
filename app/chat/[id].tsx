@@ -271,36 +271,45 @@ export default function ChatDetailScreen() {
         </View>
       )}
 
-      {/* Input для сообщения */}
-      <View
-        className="px-4 py-3 border-t flex-row items-center gap-2"
-        style={{ borderTopColor: colors.border }}
-      >
-        <TextInput
-          ref={inputRef}
-          value={newMessage}
-          onChangeText={setNewMessage}
-          placeholder="Введите сообщение..."
-          placeholderTextColor={colors.muted}
-          className="flex-1 px-3 py-2 rounded-lg text-foreground"
-          style={{ backgroundColor: colors.surface, maxHeight: 100 }}
-          multiline={true}
-          returnKeyType="send"
-          onSubmitEditing={handleSendMessage}
-          onKeyPress={handleKeyPress}
-          blurOnSubmit={false}
-          editable={!sendMessageMutation.isPending}
-        />
-        <Pressable
-          onPress={handleSendMessage}
-          disabled={!newMessage.trim() || sendMessageMutation.isPending}
-          style={({ pressed }) => [{ opacity: (!newMessage.trim() || sendMessageMutation.isPending) ? 0.3 : pressed ? 0.7 : 1, padding: 8 }]}
+      {/* Input для сообщения - скрыт для обычных пользователей в info_only чатах */}
+      {chatInfo?.type === "info_only" && chatInfo?.userRole !== "admin" ? (
+        <View
+          className="px-4 py-3 border-t items-center justify-center"
+          style={{ borderTopColor: colors.border, backgroundColor: colors.surface }}
         >
-          <Text className="text-xl">
-            {sendMessageMutation.isPending ? "⏳" : "✈️"}
-          </Text>
-        </Pressable>
-      </View>
+          <Text className="text-sm text-muted">📖 Это информационный канал (только для чтения)</Text>
+        </View>
+      ) : (
+        <View
+          className="px-4 py-3 border-t flex-row items-center gap-2"
+          style={{ borderTopColor: colors.border }}
+        >
+          <TextInput
+            ref={inputRef}
+            value={newMessage}
+            onChangeText={setNewMessage}
+            placeholder="Введите сообщение..."
+            placeholderTextColor={colors.muted}
+            className="flex-1 px-3 py-2 rounded-lg text-foreground"
+            style={{ backgroundColor: colors.surface, maxHeight: 100 }}
+            multiline={true}
+            returnKeyType="send"
+            onSubmitEditing={handleSendMessage}
+            onKeyPress={handleKeyPress}
+            blurOnSubmit={false}
+            editable={!sendMessageMutation.isPending}
+          />
+          <Pressable
+            onPress={handleSendMessage}
+            disabled={!newMessage.trim() || sendMessageMutation.isPending}
+            style={({ pressed }) => [{ opacity: (!newMessage.trim() || sendMessageMutation.isPending) ? 0.3 : pressed ? 0.7 : 1, padding: 8 }]}
+          >
+            <Text className="text-xl">
+              {sendMessageMutation.isPending ? "⏳" : "✈️"}
+            </Text>
+          </Pressable>
+        </View>
+      )}
     </ScreenContainer>
   );
 }

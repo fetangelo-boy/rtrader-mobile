@@ -1,0 +1,48 @@
+graph TB
+    subgraph APP["📱 Мобильное приложение (React Native / Expo)"]
+        LOGIN["Логин / Регистрация"]
+        APPDATA["Чаты, Настройки, Контент"]
+    end
+
+    subgraph RF["🇷🇺 РФ-КОНТУР (VPS в РФ)"]
+        direction TB
+        RFAPI["Express API<br/>Auth + Admin"]
+        RFDB["PostgreSQL"]
+        BOT["Telegram Bot"]
+        
+        subgraph RFDATA["Персональные данные"]
+            USERS["users_pd<br/>email, password, telegram_id"]
+            CONSENTS["consents<br/>согласия на обработку"]
+            RECEIPTS["receipts<br/>чеки об оплате"]
+            APPS["applications<br/>заявки"]
+            NOTES["admin_notes"]
+            AUDIT["pd_audit_log"]
+        end
+    end
+
+    subgraph SB["☁️ SUPABASE-КОНТУР (Cloud)"]
+        direction TB
+        SBAPI["Supabase REST API"]
+        SBDB["PostgreSQL"]
+        
+        subgraph SBDATA["Прикладные данные (обезличенные)"]
+            APPUSERS["app_users<br/>uuid, status, expires_at, plan"]
+            MESSAGES["messages<br/>uuid отправителя, контент"]
+            SETTINGS["chat_settings<br/>уведомления, тема"]
+        end
+    end
+
+    LOGIN -->|"email + password"| RFAPI
+    RFAPI -->|"JWT (только uuid)"| LOGIN
+    APPDATA -->|"JWT + uuid"| SBAPI
+    BOT -->|"telegram_id, чек"| RFDB
+    RFAPI --> RFDB
+    SBAPI --> SBDB
+    
+    RFDB -.->|"sync: uuid + status + plan<br/>(без ПД!)"| SBDB
+
+    style RF fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style SB fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    style APP fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style RFDATA fill:#c8e6c9,stroke:#388e3c
+    style SBDATA fill:#bbdefb,stroke:#1976d2

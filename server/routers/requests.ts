@@ -406,12 +406,13 @@ export function registerRequestRoutes(app: Express) {
           });
 
           // Add to all chats (only main chats, not test/temp ones)
-          const { data: allChats } = await supabase.from("chats").select("id").like("id", "chat-%");
+          // Assign correct role: 'subscriber' for info_only chats (read-only), 'participant' for interactive
+          const { data: allChats } = await supabase.from("chats").select("id, type").like("id", "chat-%");
           if (allChats?.length) {
             const participantRows = allChats.map((chat: any) => ({
               chat_id: chat.id,
               user_id: userId,
-              role: "participant",
+              role: chat.type === "info_only" ? "subscriber" : "participant",
             }));
             const { error: participantError } = await supabase.from("chat_participants").insert(participantRows);
             if (participantError) {
