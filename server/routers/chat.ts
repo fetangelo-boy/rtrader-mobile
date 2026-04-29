@@ -328,7 +328,7 @@ export const chatRouter = router({
 async function sendPushNotifications(
   db: any,
   chatId: number,
-  senderId: number,
+  senderId: string,
   message: any
 ) {
   try {

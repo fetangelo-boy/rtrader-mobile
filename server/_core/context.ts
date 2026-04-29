@@ -8,9 +8,9 @@ import { authUsers } from "../../drizzle/schema_auth";
 import { eq } from "drizzle-orm";
 
 export type JwtUser = {
-  id: number;
+  id: string;
   email: string;
-  userId: number;
+  userId: string;
 };
 
 export type TrpcContext = {

@@ -49,7 +49,7 @@ describe("JWT Auth E2E Flow", () => {
   });
 
   it("should generate and verify access tokens", () => {
-    const userId = 1;
+    const userId = "550e8400-e29b-41d4-a716-446655440000";
     const email = "test@example.com";
 
     const token = generateAccessToken(userId, email);
@@ -62,7 +62,7 @@ describe("JWT Auth E2E Flow", () => {
   });
 
   it("should generate and verify refresh tokens", () => {
-    const userId = 1;
+    const userId = "550e8400-e29b-41d4-a716-446655440000";
     const email = "test@example.com";
 
     const token = generateRefreshToken(userId, email);
@@ -126,9 +126,8 @@ describe("JWT Auth E2E Flow", () => {
   });
 
   it("should generate tokens for authenticated user", () => {
-    const userId = parseInt(testUserId.split("_")[1]);
-    accessToken = generateAccessToken(userId, testEmail);
-    refreshToken = generateRefreshToken(userId, testEmail);
+    accessToken = generateAccessToken(testUserId, testEmail);
+    refreshToken = generateRefreshToken(testUserId, testEmail);
 
     expect(accessToken).toBeTruthy();
     expect(refreshToken).toBeTruthy();

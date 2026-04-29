@@ -59,8 +59,8 @@ export const authRouter = router({
         throw new Error('Failed to create user');
       }
 
-      const accessToken = generateAccessToken(parseInt(user[0].id), email);
-      const refreshToken = generateRefreshToken(parseInt(user[0].id), email);
+      const accessToken = generateAccessToken(user[0].id, email);
+      const refreshToken = generateRefreshToken(user[0].id, email);
 
       return {
         success: true,
@@ -113,8 +113,8 @@ export const authRouter = router({
         .set({ lastLoginAt: new Date() })
         .where(eq(authUsers.id, user.id));
 
-      const accessToken = generateAccessToken(parseInt(user.id), email);
-      const refreshToken = generateRefreshToken(parseInt(user.id), email);
+      const accessToken = generateAccessToken(user.id, email);
+      const refreshToken = generateRefreshToken(user.id, email);
 
       return {
         success: true,

@@ -5,7 +5,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-productio
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret-key-change-in-production';
 
 export interface JwtPayload {
-  userId: number;
+  userId: string;
   email: string;
   iat?: number;
   exp?: number;
@@ -14,7 +14,7 @@ export interface JwtPayload {
 /**
  * Generate an access token (short-lived, 15 minutes)
  */
-export function generateAccessToken(userId: number, email: string): string {
+export function generateAccessToken(userId: string, email: string): string {
   return jwt.sign(
     { userId, email },
     JWT_SECRET,
@@ -25,7 +25,7 @@ export function generateAccessToken(userId: number, email: string): string {
 /**
  * Generate a refresh token (long-lived, 30 days)
  */
-export function generateRefreshToken(userId: number, email: string): string {
+export function generateRefreshToken(userId: string, email: string): string {
   return jwt.sign(
     { userId, email },
     JWT_REFRESH_SECRET,
