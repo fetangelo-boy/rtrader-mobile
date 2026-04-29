@@ -98,8 +98,8 @@ export type InsertSubscriptionRequest = typeof subscriptionRequests.$inferInsert
 export const pushTokens = mysqlTable("push_tokens", {
   id: int("id").autoincrement().primaryKey(),
 
-  /** User ID (integer, matches users.id type) */
-  userId: int("userId").notNull(),
+  /** User ID (UUID, references auth_users.id) */
+  userId: varchar("userId", { length: 36 }).notNull(),
 
   /** Expo push token */
   token: text("token").notNull().unique(),
@@ -143,7 +143,7 @@ export type InsertChat = typeof chats.$inferInsert;
 export const messages = mysqlTable("messages", {
   id: int("id").autoincrement().primaryKey(),
   chatId: int("chatId").notNull(),
-  userId: int("userId").notNull(),
+  userId: varchar("userId", { length: 36 }).notNull(),
   content: text("content").notNull(),
   mediaUrl: varchar("mediaUrl", { length: 500 }),
   mediaType: mysqlEnum("mediaType", ["image", "video", "file"]),
@@ -161,7 +161,7 @@ export type InsertMessage = typeof messages.$inferInsert;
 export const chatParticipants = mysqlTable("chat_participants", {
   id: int("id").autoincrement().primaryKey(),
   chatId: int("chatId").notNull(),
-  userId: int("userId").notNull(),
+  userId: varchar("userId", { length: 36 }).notNull(),
   role: mysqlEnum("role", ["admin", "participant", "subscriber"]).default("subscriber").notNull(),
   isMuted: int("isMuted").default(0).notNull(),
   joinedAt: timestamp("joinedAt").defaultNow().notNull(),
