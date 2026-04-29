@@ -1,15 +1,17 @@
 # Целевая архитектура RTrader: Beget VPS (без Supabase)
 
-**Версия:** 2.1 (АКТУАЛЬНАЯ)  
+**Версия:** 2.2 (АКТУАЛЬНАЯ)  
 **Дата создания:** 29 апреля 2026  
-**Последнее обновление:** 29 апреля 2026, 18:30 UTC+3  
-**Статус:** ✅ ФИНАЛЬНАЯ ОПОРНАЯ АРХИТЕКТУРА (Phase 1 & 2 ЗАВЕРШЕНЫ)  
+**Последнее обновление:** 29 апреля 2026, 18:55 UTC+3  
+**Статус:** ✅ ФИНАЛЬНАЯ ОПОРНАЯ АРХИТЕКТУРА (Phase 1, 2.1, 2.2 ЗАВЕРШЕНЫ)  
 **Принцип:** Полный отказ от Supabase. Все данные и логика на Beget VPS (Россия).
 
 > **ВАЖНО:** Этот документ является главной точкой опоры для архитектуры RTrader. Он учитывает все последние договорённости (29.04.2026):
 > - ✅ Phase 1 ЗАВЕРШЕНА: JWT авторизация на MySQL (14 пользователей импортированы)
-> - ✅ Phase 2 ЗАВЕРШЕНА: Chat data импортирована (12 чатов, 20 сообщений, 20 участников)
-> - ✅ Chat endpoints обновлены на JWT context
+> - ✅ Phase 2.1 ЗАВЕРШЕНА: Chat-kontour UUID миграция (все user IDs выровнены на UUID)
+> - ✅ Phase 2.2 ЗАВЕРШЕНА: Chat data импортирована (12 чатов, 65 сообщений, 28 участников)
+> - ✅ Chat endpoints обновлены на JWT context с UUID user IDs
+> - ✅ End-to-End тесты: JWT login → chat access → message retrieval → send message (8/8 passing)
 > - ✅ Полный уход из Supabase (без постоянной синхронизации)
 > - ✅ Push-уведомления для всех чатов (не только info_only)
 > - ✅ Единая MySQL база на Beget VPS
@@ -17,12 +19,13 @@
 > - ✅ Локальное хранилище медиа (или S3-compatible)
 > - ✅ Access control в Express middleware (вместо PostgreSQL RLS)
 > - ✅ Polling/SSE вместо Supabase Realtime
+> - ✅ UUID архитектура для всех user IDs (auth_users.id = VARCHAR(36))
 >
 > **В следующих сессиях ссылайтесь на этот файл как на единственный источник истины по архитектуре.**
 
 ---
 
-## Migration Status: Phase 1 & 2 Complete
+## Migration Status: Phase 1, 2.1, 2.2 Complete
 
 ### Phase 1: JWT Authentication Migration (✅ COMPLETE)
 - **Duration:** 29.04.2026
@@ -36,19 +39,33 @@
   - 9/9 end-to-end tests passing
 - **Status:** Production-ready
 
-### Phase 2: Chat Data Import & JWT Context Integration (✅ COMPLETE)
+### Phase 2.1: Chat-Kontour UUID Architecture Migration (✅ COMPLETE)
+- **Duration:** 29.04.2026
+- **Deliverables:**
+  - Schema updated: messages.userId INT → VARCHAR(36)
+  - Schema updated: chat_participants.userId INT → VARCHAR(36)
+  - Schema updated: push_tokens.userId INT → VARCHAR(36)
+  - All user ID references in chat-kontour aligned with auth_users UUID architecture
+  - 45 messages from test@rtrader.com re-imported with correct UUID mapping
+  - 8 chat participants from test@rtrader.com re-imported with correct UUID mapping
+- **Status:** Production-ready
+- **Key Decision:** UUID architecture chosen for consistency (auth_users.id = VARCHAR(36))
+
+### Phase 2.2: Chat Data Import & JWT Context Integration (✅ COMPLETE)
 - **Duration:** 29.04.2026
 - **Deliverables:**
   - 12 chats exported from Supabase and imported to MySQL
-  - 20 messages imported (45 failed due to invalid user_id format in export)
-  - 20 chat participants imported (8 failed due to invalid user_id format)
-  - Chat endpoints updated to use JWT context instead of Supabase Auth
-  - Data validation confirmed: all chat tables populated
-- **Status:** Production-ready (with data quality notes)
-- **Data Quality Notes:**
-  - Some messages/participants failed import due to Supabase export format issues (UUID vs numeric IDs)
-  - 52 of 65 total records successfully imported (80% success rate)
-  - All critical chat data (12 chats, 20 valid messages) available for users
+  - 65 messages imported (45 original + 20 from other users)
+  - 28 chat participants imported (8 from test@rtrader.com + 20 from other users)
+  - Chat endpoints updated to use JWT context with UUID user IDs
+  - End-to-end tests: JWT login → chat access → message retrieval → send message (8/8 passing)
+  - Data validation confirmed: all chat tables populated with correct UUID references
+- **Status:** Production-ready
+- **Data Integrity:**
+  - 45 messages from test@rtrader.com are REAL DATA (not fallback)
+  - Authorship preserved: UUID cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd = test@rtrader.com
+  - All timestamps preserved from Supabase export
+  - Message history NOT corrupted
 
 ---
 
@@ -111,11 +128,11 @@ createdAt       TIMESTAMP DEFAULT NOW()
 updatedAt       TIMESTAMP DEFAULT NOW() ON UPDATE NOW()
 ```
 
-#### `messages` — сообщения в чатах (Phase 2 COMPLETE: 20 messages imported)
+#### `messages` — сообщения в чатах (Phase 2.2 COMPLETE: 65 messages imported)
 ```
 id              INT AUTO_INCREMENT PRIMARY KEY
 chatId          INT NOT NULL, FK(chats.id)
-userId          INT NOT NULL, FK(users.id)
+userId          VARCHAR(36) NOT NULL, FK(auth_users.id)  -- Phase 2.1: UUID
 content         TEXT NOT NULL
 mediaUrl        VARCHAR(500)
 mediaType       ENUM('image', 'video', 'file')
@@ -124,11 +141,11 @@ createdAt       TIMESTAMP DEFAULT NOW()
 updatedAt       TIMESTAMP DEFAULT NOW() ON UPDATE NOW()
 ```
 
-#### `chat_participants` — участники чатов и их роли (Phase 2 COMPLETE: 20 participants imported)
+#### `chat_participants` — участники чатов и их роли (Phase 2.2 COMPLETE: 28 participants imported)
 ```
 id              INT AUTO_INCREMENT PRIMARY KEY
 chatId          INT NOT NULL, FK(chats.id)
-userId          INT NOT NULL, FK(users.id)
+userId          VARCHAR(36) NOT NULL, FK(auth_users.id)  -- Phase 2.1: UUID
 role            ENUM('admin', 'participant', 'subscriber') DEFAULT 'subscriber'
 isMuted         INT DEFAULT 0
 joinedAt        TIMESTAMP DEFAULT NOW()
