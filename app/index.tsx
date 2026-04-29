@@ -1,13 +1,14 @@
 import { Redirect } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View, Platform } from "react-native";
-import { getSupabaseClient } from "@/lib/supabase-client";
 import { useColors } from "@/hooks/use-colors";
-import * as SupabaseAuth from "@/lib/supabase-auth";
+import * as SecureStore from "expo-secure-store";
+
+const JWT_ACCESS_TOKEN_KEY = "jwt_access_token";
 
 /**
  * Root route handler
- * Checks authentication and redirects to appropriate screen
+ * Checks JWT authentication and redirects to appropriate screen
  */
 export default function RootIndex() {
   const [isLoading, setIsLoading] = useState(true);
@@ -17,37 +18,22 @@ export default function RootIndex() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // On native platforms, restore session from SecureStore first
-        if (Platform.OS !== "web") {
-          console.log("[Auth Check] Native platform: checking app version and restoring session...");
-          // Clear old session if app version changed
-          await SupabaseAuth.clearOldSessionIfVersionChanged();
-          // Then restore session if available
-          const restoredSession = await SupabaseAuth.restoreSession();
-          console.log("[Auth Check] Session restored:", restoredSession ? "yes" : "no");
-          
-          // Give Supabase time to update its internal state
-          if (restoredSession) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-        }
-
-        const supabase = getSupabaseClient();
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        console.log("[Auth Check] Session check result:", session ? "authenticated" : "not authenticated");
+        console.log("[Auth Check] Checking JWT token...");
         
-        // If no session but we're on native, try one more time
-        if (!session && Platform.OS !== "web") {
-          console.log("[Auth Check] No session found, trying again...");
-          await new Promise(resolve => setTimeout(resolve, 500));
-          const { data: { session: retrySession } } = await supabase.auth.getSession();
-          console.log("[Auth Check] Retry result:", retrySession ? "authenticated" : "not authenticated");
-          setIsAuthenticated(!!retrySession);
+        let token: string | null = null;
+        
+        if (Platform.OS !== 'web') {
+          // Native: use SecureStore
+          token = await SecureStore.getItemAsync(JWT_ACCESS_TOKEN_KEY);
         } else {
-          setIsAuthenticated(!!session);
+          // Web: use localStorage
+          token = typeof window !== 'undefined' 
+            ? localStorage.getItem(JWT_ACCESS_TOKEN_KEY)
+            : null;
         }
+        
+        console.log("[Auth Check] JWT token check result:", token ? "authenticated" : "not authenticated");
+        setIsAuthenticated(!!token);
       } catch (error) {
         console.error("[Auth Check] Error:", error);
         setIsAuthenticated(false);

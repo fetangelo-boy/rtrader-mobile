@@ -33,11 +33,11 @@ export default function ChatDetailScreen() {
   const inputRef = useRef<TextInput>(null);
 
   // Fetch chat info for header
-  const { data: chatInfo } = trpc.chat.getChatInfo.useQuery({ chatId: chatId as string });
+  const { data: chatInfo } = trpc.chat.getChatInfo.useQuery({ chatId: Number(chatId) });
 
   // Fetch chat messages via tRPC
   const { data: messagesData, isLoading: messagesLoading, error: messagesError } = trpc.chat.getMessages.useQuery({
-    chatId: chatId as string,
+    chatId: Number(chatId),
     limit: 50,
     offset: 0,
   });
@@ -128,9 +128,9 @@ export default function ChatDetailScreen() {
 
     console.log("[Chat] Sending message...");
     sendMessageMutation.mutate({
-      chatId: chatId as string,
+      chatId: Number(chatId),
       content: newMessage.trim(),
-      replyToMessageId: replyingTo?.id,
+      replyToId: replyingTo?.id ? Number(replyingTo.id) : undefined,
     });
     
     // Keyboard will be dismissed in onSuccess callback
@@ -272,7 +272,7 @@ export default function ChatDetailScreen() {
       )}
 
       {/* Input для сообщения - скрыт для обычных пользователей в info_only чатах */}
-      {chatInfo?.type === "info_only" && chatInfo?.userRole !== "admin" ? (
+      {chatInfo?.chatType === "info_only" && chatInfo?.userRole !== "admin" ? (
         <View
           className="px-4 py-3 border-t items-center justify-center"
           style={{ borderTopColor: colors.border, backgroundColor: colors.surface }}

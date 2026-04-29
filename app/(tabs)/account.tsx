@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
-import * as SupabaseAuth from "@/lib/supabase-auth";
+import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 
 interface Subscription {
   id: string;
@@ -244,7 +245,16 @@ export default function AccountScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await SupabaseAuth.signOut();
+              // Clear JWT tokens from secure storage
+              if (Platform.OS !== 'web') {
+                await SecureStore.deleteItemAsync("jwt_access_token");
+                await SecureStore.deleteItemAsync("jwt_refresh_token");
+                await SecureStore.deleteItemAsync("jwt_user_info");
+              } else {
+                localStorage.removeItem("jwt_access_token");
+                localStorage.removeItem("jwt_refresh_token");
+                localStorage.removeItem("jwt_user_info");
+              }
             } catch (e) {
               console.error("Logout error:", e);
             } finally {

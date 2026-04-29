@@ -119,3 +119,53 @@ export type InsertPushToken = typeof pushTokens.$inferInsert;
 
 // Add foreign key constraint if needed:
 // ALTER TABLE push_tokens ADD CONSTRAINT fk_push_tokens_user_id FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE;
+
+/**
+ * Chats — conversation channels (interactive or info_only)
+ */
+export const chats = mysqlTable("chats", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  chatType: mysqlEnum("chatType", ["interactive", "info_only"]).default("interactive").notNull(),
+  icon: varchar("icon", { length: 50 }),
+  sortOrder: int("sortOrder").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Chat = typeof chats.$inferSelect;
+export type InsertChat = typeof chats.$inferInsert;
+
+/**
+ * Messages — chat messages with optional media
+ */
+export const messages = mysqlTable("messages", {
+  id: int("id").autoincrement().primaryKey(),
+  chatId: int("chatId").notNull(),
+  userId: int("userId").notNull(),
+  content: text("content").notNull(),
+  mediaUrl: varchar("mediaUrl", { length: 500 }),
+  mediaType: mysqlEnum("mediaType", ["image", "video", "file"]),
+  replyToId: int("replyToId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;
+
+/**
+ * Chat participants — user roles and mute status in chats
+ */
+export const chatParticipants = mysqlTable("chat_participants", {
+  id: int("id").autoincrement().primaryKey(),
+  chatId: int("chatId").notNull(),
+  userId: int("userId").notNull(),
+  role: mysqlEnum("role", ["admin", "participant", "subscriber"]).default("subscriber").notNull(),
+  isMuted: int("isMuted").default(0).notNull(),
+  joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+});
+
+export type ChatParticipant = typeof chatParticipants.$inferSelect;
+export type InsertChatParticipant = typeof chatParticipants.$inferInsert;

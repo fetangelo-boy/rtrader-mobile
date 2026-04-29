@@ -263,3 +263,29 @@
 - [ ] Evaluate free/cheap tiers for initial launch
 - [ ] Prepare migration plan from Supabase to Russian backend
 - [ ] Deploy backend + bot + PostgreSQL on Russian server
+
+
+## Media Uploads in Chats (2026-04-29)
+- [ ] Add `media_url` field to `messages` table (Supabase)
+- [ ] Create `chat.uploadMedia` endpoint for S3 upload
+- [ ] Add RLS policy: admins can upload to info_only, participants to interactive
+- [ ] Add UI button "📎 Прикрепить" in chat screen
+- [ ] Display media (photos/videos) in message list
+- [ ] Handle media preview + download
+
+## Push Notifications - Broadcast Endpoint (2026-04-29)
+- [ ] Create `notifications.sendBatch` endpoint (admin-only)
+- [ ] Integrate Expo Push API for sending notifications
+- [ ] Support sending to: all subscribers, specific chat, specific role
+- [ ] Implement notification payload: title, body, data (chatId, screen)
+- [ ] Add filtering: exclude users who disabled notifications
+- [ ] Test end-to-end: send → receive on device
+
+## Migration Plan: Supabase → Beget VPS (2026-04-29)
+- [ ] Confirm backend stack: Node.js + Express + MySQL (Drizzle ORM)
+- [ ] Verify Beget VPS specifications (1 core, 1GB RAM, 10GB NVMe, ~480₽/мес)
+- [ ] Plan data migration: export Supabase → import MySQL on Beget
+- [ ] Design unified database schema (users, subscriptions, chats, messages)
+- [ ] Plan zero-sync architecture: no ongoing Supabase dependency
+- [ ] Create deployment guide for Beget (Docker/PM2, Nginx, SSL)
+- [ ] Plan cutover strategy: switch API endpoints → new backend

@@ -1,12 +1,14 @@
-import { View, Text, TextInput, TouchableOpacity, Pressable, ActivityIndicator, Alert, ScrollView, Linking } from "react-native";
+import { Alert, ScrollView, Text, TextInput, TouchableOpacity, View, Pressable, ActivityIndicator, Linking } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useState, useEffect } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { getSupabaseClient } from "@/lib/supabase-client";
 
 const TELEGRAM_BOT_URL = "https://t.me/rtrader_mobapp_bot";
+const SESSION_TOKEN_KEY = "jwt_access_token";
+const REFRESH_TOKEN_KEY = "jwt_refresh_token";
+const USER_INFO_KEY = "jwt_user_info";
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -40,35 +42,42 @@ export default function LoginScreen() {
     try {
       setLoading(true);
       const apiUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:3000";
-      const response = await fetch(`${apiUrl}/api/auth/login`, {
+      
+      // Call the new JWT login endpoint via tRPC
+      const response = await fetch(`${apiUrl}/api/trpc/auth.login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailVal, password: passwordVal }),
+        body: JSON.stringify({
+          json: {
+            email: emailVal,
+            password: passwordVal,
+          },
+        }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Login failed");
+        throw new Error(errorData.error?.message || "Login failed");
       }
 
       const data = await response.json();
-
-      if (data.access_token) {
-        await SecureStore.setItemAsync("supabase_access_token", data.access_token);
-        if (data.refresh_token) {
-          await SecureStore.setItemAsync("supabase_refresh_token", data.refresh_token);
-        }
+      
+      // Extract the result from tRPC response format
+      const result = data.result?.data;
+      
+      if (!result?.success || !result?.accessToken) {
+        throw new Error("Invalid response from server");
       }
 
-      if (data.access_token && data.refresh_token) {
-        const supabase = getSupabaseClient();
-        const { error: setSessionError } = await supabase.auth.setSession({
-          access_token: data.access_token,
-          refresh_token: data.refresh_token,
-        });
-        if (setSessionError) {
-          throw new Error("Failed to set session: " + setSessionError.message);
-        }
+      // Store JWT tokens in secure storage
+      await SecureStore.setItemAsync(SESSION_TOKEN_KEY, result.accessToken);
+      if (result.refreshToken) {
+        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, result.refreshToken);
+      }
+
+      // Store user info for quick access
+      if (result.user) {
+        await SecureStore.setItemAsync(USER_INFO_KEY, JSON.stringify(result.user));
       }
 
       router.replace("/(tabs)/chats");
@@ -198,11 +207,6 @@ export default function LoginScreen() {
               Получить доступ через Telegram
             </Text>
           </TouchableOpacity>
-
-          {/* Help text */}
-          <Text className="text-xs text-muted text-center mt-4 px-4" style={{ lineHeight: 18 }}>
-            Для получения доступа оплатите подписку через нашего Telegram-бота. После проверки оплаты вам будут отправлены логин и пароль.
-          </Text>
         </View>
       </ScrollView>
     </ScreenContainer>

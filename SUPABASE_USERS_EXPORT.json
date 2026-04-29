@@ -1,0 +1,58 @@
+[
+  {
+    "id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "email": "demo@rtrader.com"
+  },
+  {
+    "id": "7691dc11-d863-4889-be4f-da98ac2464a1",
+    "email": "subscriber@test.com"
+  },
+  {
+    "id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "email": "test@rtrader.com"
+  },
+  {
+    "id": "d632a655-4481-401b-b2ec-a802558aba71",
+    "email": "tester1@rtrader.com"
+  },
+  {
+    "id": "b1703f3a-1a5e-4928-9bd9-6c8c2a014a20",
+    "email": "tester2@rtrader.com"
+  },
+  {
+    "id": "f2698a51-cc5c-419b-9171-33e29f37faaa",
+    "email": "tester3@rtrader.com"
+  },
+  {
+    "id": "54f65c59-e7b3-43f2-89d9-201344bab730",
+    "email": "tg7860137759@rtrader.app"
+  },
+  {
+    "id": "a022649b-cc8c-4a67-9f40-c70d2bf5d03d",
+    "email": "tg999888777@rtrader.app"
+  },
+  {
+    "id": "7120a13e-bb57-49df-83f2-13a42942ba38",
+    "email": "tgdate_test_456@rtrader.app"
+  },
+  {
+    "id": "fd1852c8-f4a2-4d77-8864-612145cfe4a9",
+    "email": "tge2e_1777060785@rtrader.app"
+  },
+  {
+    "id": "4bfb184f-7579-4959-b089-979c80ac1bd0",
+    "email": "tglocal_test_123@rtrader.app"
+  },
+  {
+    "id": "db06253a-aabb-417e-a76f-72688500b4e7",
+    "email": "tgpostfix_test@rtrader.app"
+  },
+  {
+    "id": "66b8a410-bacc-4b85-a9c3-56f22432e3a7",
+    "email": "tgtest_1777058079@rtrader.app"
+  },
+  {
+    "id": "41c28d15-a31d-430f-9ff1-884e4228742a",
+    "email": "tgtest_1777058171@rtrader.app"
+  }
+]

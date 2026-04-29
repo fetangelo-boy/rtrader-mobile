@@ -3,7 +3,10 @@ import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import type { AppRouter } from "@/server/routers";
 import { getApiBaseUrl } from "@/constants/oauth";
-import { supabase } from "@/lib/supabase-client";
+import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
+
+const JWT_ACCESS_TOKEN_KEY = "jwt_access_token";
 
 /**
  * tRPC React client for type-safe API calls.
@@ -27,22 +30,32 @@ export function createTRPCClient() {
         transformer: superjson,
         async headers() {
           try {
-            console.log('[TRPC] Getting session for headers...');
-            const { data: { session } } = await supabase.auth.getSession();
-            console.log('[TRPC] Session retrieved:', session ? 'yes' : 'no');
+            console.log('[TRPC] Getting JWT token for headers...');
             
-            const token = session?.access_token;
+            // Get JWT token from secure storage (native) or localStorage (web)
+            let token: string | null = null;
+            
+            if (Platform.OS !== 'web') {
+              // Native: use SecureStore
+              token = await SecureStore.getItemAsync(JWT_ACCESS_TOKEN_KEY);
+            } else {
+              // Web: use localStorage
+              token = typeof window !== 'undefined' 
+                ? localStorage.getItem(JWT_ACCESS_TOKEN_KEY)
+                : null;
+            }
+            
+            console.log('[TRPC] JWT token retrieved:', token ? 'yes' : 'no');
+            
             if (token) {
               console.log('[TRPC] Token found, length:', token.length);
               return { Authorization: `Bearer ${token}` };
             } else {
-              console.warn('[TRPC] No session token available');
-              const { data: { user } } = await supabase.auth.getUser();
-              console.warn('[TRPC] User:', user ? user.email : 'null');
+              console.warn('[TRPC] No JWT token available');
               return {};
             }
           } catch (error) {
-            console.error('[TRPC] Failed to get Supabase session:', error);
+            console.error('[TRPC] Failed to get JWT token:', error);
             return {};
           }
         },

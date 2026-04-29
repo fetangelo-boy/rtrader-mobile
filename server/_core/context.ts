@@ -2,26 +2,57 @@ import type { CreateExpressContextOptions } from "@trpc/server/adapters/express"
 import type { User } from "../../drizzle/schema";
 import { sdk } from "./sdk";
 import { getServerSupabase } from "../../lib/supabase";
+import { verifyAccessToken } from "./jwt";
+import { getDb } from "../db";
+import { authUsers } from "../../drizzle/schema_auth";
+import { eq } from "drizzle-orm";
+
+export type JwtUser = {
+  id: number;
+  email: string;
+  userId: number;
+};
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
   res: CreateExpressContextOptions["res"];
   user: User | null;
   supabaseUser: { id: string; email: string } | null;
+  jwtUser: JwtUser | null;
 };
 
 export async function createContext(opts: CreateExpressContextOptions): Promise<TrpcContext> {
   let user: User | null = null;
   let supabaseUser: { id: string; email: string } | null = null;
+  let jwtUser: JwtUser | null = null;
 
-  // Try to get Supabase user from Authorization header FIRST
-  // (before Manus SDK auth, to avoid JOSEAlgNotAllowed noise for Supabase tokens)
   const authHeader = opts.req.headers.authorization;
-  const isSupabaseToken = authHeader?.startsWith("Bearer eyJ");
 
-  if (isSupabaseToken) {
+  // Try JWT auth first (new MySQL/JWT system)
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    
+    // Try to verify as JWT token
+    const jwtPayload = verifyAccessToken(token);
+    if (jwtPayload) {
+      jwtUser = {
+        id: jwtPayload.userId,
+        email: jwtPayload.email,
+        userId: jwtPayload.userId,
+      };
+      console.log("[Auth] JWT user authenticated:", jwtUser.email);
+      
+      return {
+        req: opts.req,
+        res: opts.res,
+        user,
+        supabaseUser,
+        jwtUser,
+      };
+    }
+
+    // Fall back to Supabase token verification if JWT fails
     try {
-      const token = authHeader!.slice(7);
       const supabase = getServerSupabase();
       const { data, error } = await supabase.auth.getUser(token);
       if (!error && data.user) {
@@ -38,7 +69,7 @@ export async function createContext(opts: CreateExpressContextOptions): Promise<
       supabaseUser = null;
     }
   } else {
-    // Only try Manus SDK auth for non-Supabase tokens
+    // Only try Manus SDK auth for non-Bearer tokens
     try {
       user = await sdk.authenticateRequest(opts.req);
     } catch (error) {
@@ -52,5 +83,6 @@ export async function createContext(opts: CreateExpressContextOptions): Promise<
     res: opts.res,
     user,
     supabaseUser,
+    jwtUser,
   };
 }
