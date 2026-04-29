@@ -2,8 +2,8 @@
 
 **Версия:** 2.2 (АКТУАЛЬНАЯ)  
 **Дата создания:** 29 апреля 2026  
-**Последнее обновление:** 29 апреля 2026, 18:55 UTC+3  
-**Статус:** ✅ ФИНАЛЬНАЯ ОПОРНАЯ АРХИТЕКТУРА (Phase 1, 2.1, 2.2 ЗАВЕРШЕНЫ)  
+**Последнее обновление:** 29 апреля 2026, 19:00 UTC+3  
+**Статус:** ⚠️ READY FOR LIVE TESTING (Phase 1, 2.1, 2.2 ЗАВЕРШЕНЫ, Smoke Test 7/7 PASSED)  
 **Принцип:** Полный отказ от Supabase. Все данные и логика на Beget VPS (Россия).
 
 > **ВАЖНО:** Этот документ является главной точкой опоры для архитектуры RTrader. Он учитывает все последние договорённости (29.04.2026):
@@ -12,6 +12,7 @@
 > - ✅ Phase 2.2 ЗАВЕРШЕНА: Chat data импортирована (12 чатов, 65 сообщений, 28 участников)
 > - ✅ Chat endpoints обновлены на JWT context с UUID user IDs
 > - ✅ End-to-End тесты: JWT login → chat access → message retrieval → send message (8/8 passing)
+> - ✅ Smoke Test: Real user flow (login → chat list → enter chat → get messages → send message → session refresh) (7/7 passing)
 > - ✅ Полный уход из Supabase (без постоянной синхронизации)
 > - ✅ Push-уведомления для всех чатов (не только info_only)
 > - ✅ Единая MySQL база на Beget VPS
@@ -59,13 +60,15 @@
   - 28 chat participants imported (8 from test@rtrader.com + 20 from other users)
   - Chat endpoints updated to use JWT context with UUID user IDs
   - End-to-end tests: JWT login → chat access → message retrieval → send message (8/8 passing)
+  - Smoke test: Real user flow (7/7 passing)
   - Data validation confirmed: all chat tables populated with correct UUID references
-- **Status:** Production-ready
+- **Status:** Ready for Live Testing
 - **Data Integrity:**
   - 45 messages from test@rtrader.com are REAL DATA (not fallback)
   - Authorship preserved: UUID cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd = test@rtrader.com
   - All timestamps preserved from Supabase export
   - Message history NOT corrupted
+  - Smoke test verified: login, chat list, enter chat, get messages, send message, session refresh all working
 
 ---
 

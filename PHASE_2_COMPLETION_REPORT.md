@@ -2,7 +2,7 @@
 
 **Date:** 29 апреля 2026  
 **Duration:** 29.04.2026 (single session)  
-**Status:** ✅ PRODUCTION-READY  
+**Status:** ⚠️ READY FOR LIVE TESTING (Smoke Test 7/7 Passed)  
 
 ---
 
@@ -208,3 +208,76 @@ Phase 2 successfully completed the migration of all chat data from Supabase to M
 ---
 
 **Checkpoint:** manus-webdev://da1d7913 (Phase 2.2 Complete)
+
+
+---
+
+## Smoke Test: Real User Flow (Final Verification)
+
+**Test Suite:** `tests/smoke.user-flow.test.ts` (7 tests)  
+**Duration:** 392ms  
+**Results:** 7/7 PASSING ✅
+
+### Test Steps
+
+✅ **Step 1: Login** — JWT token generation and validation  
+User: test@rtrader.com  
+Result: Token generated and verified successfully
+
+✅ **Step 2: Get Chat List** — Retrieve all chats for user  
+Result: 12 chats retrieved (Газ/нефть, Продуктовый, Металлы, Сельхоз, Валюта, Новости рынка, Аналитика, Образование, Test Chat, General, Trading Tips, Market Analysis)
+
+✅ **Step 3: Enter Chat** — Verify user is participant  
+Chat: "Газ/нефть"  
+Role: participant  
+Result: User verified as participant
+
+✅ **Step 4: Get Messages** — Retrieve chat messages  
+Result: 10 messages retrieved, first message: "Цена на нефть растёт из-за геополитических рисков..."
+
+✅ **Step 5: Send Message** — User sends message to chat  
+Message: "Smoke test message 1777489226006"  
+Result: Message sent and verified in database
+
+✅ **Step 6: Session Refresh** — Verify token refresh works  
+Result: New token generated and verified, different from original token
+
+✅ **Complete Flow Summary** — All steps passed  
+
+### Test Coverage Summary
+
+| Test Suite | Tests | Status |
+|-----------|-------|--------|
+| Auth (JWT) | 9 | ✅ PASSING |
+| Chat (E2E) | 8 | ✅ PASSING |
+| Smoke (Real Flow) | 7 | ✅ PASSING |
+| **TOTAL** | **24** | **✅ PASSING** |
+
+---
+
+## Final Status
+
+**Phase 2: READY FOR LIVE TESTING** ⚠️
+
+### What's Verified
+- ✅ All 14 users accessible via JWT auth
+- ✅ All 12 chats accessible
+- ✅ All 65 messages retrievable with correct authorship
+- ✅ All 28 participants with correct roles
+- ✅ Message sending works with JWT context
+- ✅ Session refresh works
+- ✅ Real user flow works end-to-end (7/7 smoke tests)
+
+### What's NOT Yet Verified (Requires Live Deployment)
+- ⏳ Real Beget VPS database connectivity
+- ⏳ Real users logging in from mobile app
+- ⏳ Real push notifications
+- ⏳ Real realtime message updates (polling)
+- ⏳ Real media uploads
+
+### Next Step
+Deploy to Beget VPS and conduct live testing with real users. After successful live testing, mark as **production-ready**.
+
+---
+
+**Checkpoint:** manus-webdev://7bd48dd4 (Phase 2.2 Complete with Smoke Test)
