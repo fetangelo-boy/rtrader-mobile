@@ -1,0 +1,98 @@
+[
+  {
+    "id": "chat-1",
+    "name": "Газ/нефть",
+    "description": "Обсуждение энергоносителей и цен на нефть",
+    "type": "interactive",
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "chat-2",
+    "name": "Продуктовый",
+    "description": "Торговля продовольственными товарами",
+    "type": "interactive",
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "chat-3",
+    "name": "Металлы",
+    "description": "Драгоценные и промышленные металлы",
+    "type": "interactive",
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "chat-4",
+    "name": "Сельхоз",
+    "description": "Сельскохозяйственные товары и урожаи",
+    "type": "interactive",
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "chat-5",
+    "name": "Валюта",
+    "description": "Обсуждение валютных пар и курсов",
+    "type": "interactive",
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "chat-6",
+    "name": "Новости рынка",
+    "description": "Последние новости с финансовых рынков",
+    "type": "info_only",
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "chat-7",
+    "name": "Аналитика",
+    "description": "Глубокий анализ и прогнозы трейдеров",
+    "type": "info_only",
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "chat-8",
+    "name": "Образование",
+    "description": "Обучение трейдингу и инвестициям",
+    "type": "info_only",
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "4198c604-083c-492e-a32b-9c25b39578c1",
+    "name": "Test Chat",
+    "description": "Test",
+    "type": "interactive",
+    "created_at": "2026-04-23T05:58:17.294455+00:00",
+    "updated_at": "2026-04-23T05:58:17.294455+00:00"
+  },
+  {
+    "id": "6d30606d-b155-4b2b-b814-ac9681a490f6",
+    "name": "General",
+    "description": "General discussion",
+    "type": "interactive",
+    "created_at": "2026-04-23T05:58:27.817049+00:00",
+    "updated_at": "2026-04-23T05:58:27.817049+00:00"
+  },
+  {
+    "id": "3d99dc01-e7da-4597-b072-57e950eef2e5",
+    "name": "Trading Tips",
+    "description": "Share trading strategies",
+    "type": "interactive",
+    "created_at": "2026-04-23T05:58:28.393106+00:00",
+    "updated_at": "2026-04-23T05:58:28.393106+00:00"
+  },
+  {
+    "id": "9beb6331-1bf7-4cb2-8169-35c001475ebc",
+    "name": "Market Analysis",
+    "description": "Discuss market trends",
+    "type": "interactive",
+    "created_at": "2026-04-23T05:58:29.044646+00:00",
+    "updated_at": "2026-04-23T05:58:29.044646+00:00"
+  }
+]

@@ -10,7 +10,7 @@ export const chatRouter = router({
    * Returns chats where user is a participant, with last message info
    */
   list: protectedProcedure.query(async ({ ctx }: any) => {
-    const userId = ctx.user?.id;
+    const userId = ctx.jwtUser?.userId || ctx.user?.id;
     if (!userId) throw new Error("Unauthorized");
 
     const db = await getDb();
@@ -59,7 +59,7 @@ export const chatRouter = router({
   getChatInfo: protectedProcedure
     .input(z.object({ chatId: z.number() }))
     .query(async ({ input, ctx }: any) => {
-      const userId = ctx.user?.id;
+      const userId = ctx.jwtUser?.userId || ctx.user?.id;
       if (!userId) throw new Error("Unauthorized");
 
       const db = await getDb();
@@ -105,7 +105,7 @@ export const chatRouter = router({
       })
     )
     .query(async ({ input, ctx }: any) => {
-      const userId = ctx.user?.id;
+      const userId = ctx.jwtUser?.userId || ctx.user?.id;
       if (!userId) throw new Error("Unauthorized");
 
       const db = await getDb();
@@ -170,7 +170,7 @@ export const chatRouter = router({
       })
     )
     .mutation(async ({ input, ctx }: any) => {
-      const userId = ctx.user?.id;
+      const userId = ctx.jwtUser?.userId || ctx.user?.id;
       if (!userId) throw new Error("Unauthorized");
 
       const db = await getDb();
@@ -241,7 +241,7 @@ export const chatRouter = router({
   setMuted: protectedProcedure
     .input(z.object({ chatId: z.number(), isMuted: z.boolean() }))
     .mutation(async ({ input, ctx }: any) => {
-      const userId = ctx.user?.id;
+      const userId = ctx.jwtUser?.userId || ctx.user?.id;
       if (!userId) throw new Error("Unauthorized");
 
       const db = await getDb();
@@ -276,7 +276,7 @@ export const chatRouter = router({
       })
     )
     .mutation(async ({ input, ctx }: any) => {
-      const userId = ctx.user?.id;
+      const userId = ctx.jwtUser?.userId || ctx.user?.id;
       if (!userId) throw new Error("Unauthorized");
 
       const db = await getDb();

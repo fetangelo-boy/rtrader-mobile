@@ -1,0 +1,587 @@
+[
+  {
+    "id": "msg-1-1",
+    "chat_id": "chat-1",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Цена на нефть растёт из-за геополитических рисков",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-1-2",
+    "chat_id": "chat-1",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "OPEC+ может сократить добычу на 2 млн баррелей",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-1-3",
+    "chat_id": "chat-1",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Газ в Европе упал на 15% за неделю",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-1-4",
+    "chat_id": "chat-1",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Хороший момент для покупки энергетических акций",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-1-5",
+    "chat_id": "chat-1",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Ждём отчёта EIA на выходных",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-2-1",
+    "chat_id": "chat-2",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Цены на пшеницу снизились на 5%",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-2-2",
+    "chat_id": "chat-2",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Урожай кукурузы в США превысил прогнозы",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-2-3",
+    "chat_id": "chat-2",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Спрос на какао остаётся высоким",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-2-4",
+    "chat_id": "chat-2",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Сахар может вырасти на 10% в Q2",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-2-5",
+    "chat_id": "chat-2",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Следим за погодой в Аргентине",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-3-1",
+    "chat_id": "chat-3",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Золото укрепилось на фоне инфляции",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-3-2",
+    "chat_id": "chat-3",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Серебро отстаёт от золота",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-3-3",
+    "chat_id": "chat-3",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Медь растёт на восстановлении спроса",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-3-4",
+    "chat_id": "chat-3",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Платина дешевеет из-за спада в автопроме",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-3-5",
+    "chat_id": "chat-3",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Литий остаётся волатильным",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-4-1",
+    "chat_id": "chat-4",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Соевые бобы выросли на 3% за день",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-4-2",
+    "chat_id": "chat-4",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Засуха в Бразилии может повлиять на урожай",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-4-3",
+    "chat_id": "chat-4",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Рис дешевеет на фоне избытка предложения",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-4-4",
+    "chat_id": "chat-4",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Кофе остаётся дорогим из-за болезней растений",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-4-5",
+    "chat_id": "chat-4",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Апельсины выросли в цене",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-5-1",
+    "chat_id": "chat-5",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "USD укрепился к EUR на 1.5%",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-5-2",
+    "chat_id": "chat-5",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Йена слабеет на фоне низких ставок ЦБ Японии",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-5-3",
+    "chat_id": "chat-5",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Фунт восстанавливается после данных по инфляции",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-5-4",
+    "chat_id": "chat-5",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Рубль укрепился на фоне повышения ставок",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-5-5",
+    "chat_id": "chat-5",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Крипто-валюты растут вместе с акциями",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-6-1",
+    "chat_id": "chat-6",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "S&P 500 достиг новых максимумов",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-6-2",
+    "chat_id": "chat-6",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "ФРС сохранила ставки без изменений",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-6-3",
+    "chat_id": "chat-6",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Инфляция в США замедлилась до 3.2%",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-7-1",
+    "chat_id": "chat-7",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Технический анализ: поддержка на уровне 4200",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-7-2",
+    "chat_id": "chat-7",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Фундаментальный анализ указывает на рост",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-7-3",
+    "chat_id": "chat-7",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Волатильность может возрасти на 20%",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-8-1",
+    "chat_id": "chat-8",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Урок 1: Основы трейдинга фьючерсами",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-8-2",
+    "chat_id": "chat-8",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Урок 2: Управление рисками и стоп-лоссы",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-8-3",
+    "chat_id": "chat-8",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Урок 3: Психология трейдера",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T10:19:49.779997+00:00",
+    "updated_at": "2026-04-21T10:19:49.779997+00:00"
+  },
+  {
+    "id": "msg-1776771015092-y6crxdi8y",
+    "chat_id": "chat-1",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Тест: сообщение из RTrader 🚀",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-21T11:30:15.16584+00:00",
+    "updated_at": "2026-04-21T11:30:15.16584+00:00"
+  },
+  {
+    "id": "msg-1776775365095-l8n7xfxnw",
+    "chat_id": "chat-7",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Dima",
+    "reply_to_message_id": "msg-7-3",
+    "created_at": "2026-04-21T12:42:45.21254+00:00",
+    "updated_at": "2026-04-21T12:42:45.21254+00:00"
+  },
+  {
+    "id": "msg-1776778094134-s5p75xzbz",
+    "chat_id": "chat-5",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Точно",
+    "reply_to_message_id": "msg-5-2",
+    "created_at": "2026-04-21T13:28:14.251935+00:00",
+    "updated_at": "2026-04-21T13:28:14.251935+00:00"
+  },
+  {
+    "id": "msg-1776780130368-lgpnl7emn",
+    "chat_id": "chat-4",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Тест\n\n\n\n\nТест",
+    "reply_to_message_id": "msg-4-2",
+    "created_at": "2026-04-21T14:02:10.479119+00:00",
+    "updated_at": "2026-04-21T14:02:10.479119+00:00"
+  },
+  {
+    "id": "msg-1776781800921-mf3mlhs6o",
+    "chat_id": "chat-5",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Тест",
+    "reply_to_message_id": "msg-5-2",
+    "created_at": "2026-04-21T14:30:01.096328+00:00",
+    "updated_at": "2026-04-21T14:30:01.096328+00:00"
+  },
+  {
+    "id": "msg-1776832117584-mzl3mur1a",
+    "chat_id": "chat-4",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "test",
+    "reply_to_message_id": "msg-4-5",
+    "created_at": "2026-04-22T04:28:37.681133+00:00",
+    "updated_at": "2026-04-22T04:28:37.681133+00:00"
+  },
+  {
+    "id": "msg-1776832402014-t064a5r6m",
+    "chat_id": "chat-5",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Test",
+    "reply_to_message_id": "msg-5-4",
+    "created_at": "2026-04-22T04:33:22.125712+00:00",
+    "updated_at": "2026-04-22T04:33:22.125712+00:00"
+  },
+  {
+    "id": "msg-1776833964467-7a8u8vrlg",
+    "chat_id": "chat-4",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Test",
+    "reply_to_message_id": "msg-4-3",
+    "created_at": "2026-04-22T04:59:24.535739+00:00",
+    "updated_at": "2026-04-22T04:59:24.535739+00:00"
+  },
+  {
+    "id": "msg-1776922930742-aigsslyh2",
+    "chat_id": "chat-5",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Отчество",
+    "reply_to_message_id": "msg-5-5",
+    "created_at": "2026-04-23T05:42:10.801386+00:00",
+    "updated_at": "2026-04-23T05:42:10.801386+00:00"
+  },
+  {
+    "id": "736b3ac9-7eb2-4137-bf6d-0ccc5407b86b",
+    "chat_id": "6d30606d-b155-4b2b-b814-ac9681a490f6",
+    "user_id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "content": "Welcome to General!",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-23T05:58:28.040004+00:00",
+    "updated_at": "2026-04-23T05:58:28.040004+00:00"
+  },
+  {
+    "id": "b8442c19-4578-4f45-83d8-ec568b92e382",
+    "chat_id": "6d30606d-b155-4b2b-b814-ac9681a490f6",
+    "user_id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "content": "This is a test message",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-23T05:58:28.139118+00:00",
+    "updated_at": "2026-04-23T05:58:28.139118+00:00"
+  },
+  {
+    "id": "dd16edde-cd1f-488e-b1a1-b4d77c566bb9",
+    "chat_id": "6d30606d-b155-4b2b-b814-ac9681a490f6",
+    "user_id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "content": "Feel free to share your thoughts",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-23T05:58:28.284111+00:00",
+    "updated_at": "2026-04-23T05:58:28.284111+00:00"
+  },
+  {
+    "id": "63eb79fa-4051-476c-88f9-dcb2f718ca1e",
+    "chat_id": "3d99dc01-e7da-4597-b072-57e950eef2e5",
+    "user_id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "content": "Welcome to Trading Tips!",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-23T05:58:28.615915+00:00",
+    "updated_at": "2026-04-23T05:58:28.615915+00:00"
+  },
+  {
+    "id": "25587ada-795f-4b5b-8211-b0ae720aa93f",
+    "chat_id": "3d99dc01-e7da-4597-b072-57e950eef2e5",
+    "user_id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "content": "This is a test message",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-23T05:58:28.773693+00:00",
+    "updated_at": "2026-04-23T05:58:28.773693+00:00"
+  },
+  {
+    "id": "bd135631-da88-469f-8936-22e01f1d87d1",
+    "chat_id": "3d99dc01-e7da-4597-b072-57e950eef2e5",
+    "user_id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "content": "Feel free to share your thoughts",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-23T05:58:28.928986+00:00",
+    "updated_at": "2026-04-23T05:58:28.928986+00:00"
+  },
+  {
+    "id": "de65ee8e-ac68-4a73-9465-049a8c37cc71",
+    "chat_id": "9beb6331-1bf7-4cb2-8169-35c001475ebc",
+    "user_id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "content": "Welcome to Market Analysis!",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-23T05:58:29.326604+00:00",
+    "updated_at": "2026-04-23T05:58:29.326604+00:00"
+  },
+  {
+    "id": "fb7c44af-9922-414f-bfe1-c8eb8c56abc9",
+    "chat_id": "9beb6331-1bf7-4cb2-8169-35c001475ebc",
+    "user_id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "content": "This is a test message",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-23T05:58:29.479173+00:00",
+    "updated_at": "2026-04-23T05:58:29.479173+00:00"
+  },
+  {
+    "id": "0bae17af-d692-415a-8523-95098496e640",
+    "chat_id": "9beb6331-1bf7-4cb2-8169-35c001475ebc",
+    "user_id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "content": "Feel free to share your thoughts",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-23T05:58:29.583961+00:00",
+    "updated_at": "2026-04-23T05:58:29.583961+00:00"
+  },
+  {
+    "id": "msg-1776925316275-14ihd70aw",
+    "chat_id": "chat-1",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Это тестовое сообщение из браузера",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-23T06:21:56.344798+00:00",
+    "updated_at": "2026-04-23T06:21:56.344798+00:00"
+  },
+  {
+    "id": "msg-1776929202642-cz4fti2xh",
+    "chat_id": "6d30606d-b155-4b2b-b814-ac9681a490f6",
+    "user_id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "content": "Test",
+    "reply_to_message_id": "dd16edde-cd1f-488e-b1a1-b4d77c566bb9",
+    "created_at": "2026-04-23T07:26:42.673523+00:00",
+    "updated_at": "2026-04-23T07:26:42.673523+00:00"
+  },
+  {
+    "id": "msg-1776929214460-oux5ngrh2",
+    "chat_id": "6d30606d-b155-4b2b-b814-ac9681a490f6",
+    "user_id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "content": "Test",
+    "reply_to_message_id": "b8442c19-4578-4f45-83d8-ec568b92e382",
+    "created_at": "2026-04-23T07:26:54.496729+00:00",
+    "updated_at": "2026-04-23T07:26:54.496729+00:00"
+  },
+  {
+    "id": "msg-1776975070685-sruhhomga",
+    "chat_id": "9beb6331-1bf7-4cb2-8169-35c001475ebc",
+    "user_id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "content": "Test",
+    "reply_to_message_id": "0bae17af-d692-415a-8523-95098496e640",
+    "created_at": "2026-04-23T20:11:10.825063+00:00",
+    "updated_at": "2026-04-23T20:11:10.825063+00:00"
+  },
+  {
+    "id": "msg-1776975309156-du4zicn41",
+    "chat_id": "4198c604-083c-492e-a32b-9c25b39578c1",
+    "user_id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "content": "Test",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-23T20:15:09.260932+00:00",
+    "updated_at": "2026-04-23T20:15:09.260932+00:00"
+  },
+  {
+    "id": "msg-1776976883043-mzv88olfi",
+    "chat_id": "chat-4",
+    "user_id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "content": "Test",
+    "reply_to_message_id": "msg-4-3",
+    "created_at": "2026-04-23T20:41:23.135051+00:00",
+    "updated_at": "2026-04-23T20:41:23.135051+00:00"
+  },
+  {
+    "id": "msg-1776977174761-sgchu50nm",
+    "chat_id": "chat-6",
+    "user_id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "content": "Test",
+    "reply_to_message_id": "msg-6-3",
+    "created_at": "2026-04-23T20:46:14.876969+00:00",
+    "updated_at": "2026-04-23T20:46:14.876969+00:00"
+  },
+  {
+    "id": "msg-1777049908287-vbdkod6lo",
+    "chat_id": "chat-7",
+    "user_id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "content": "Test",
+    "reply_to_message_id": "msg-7-3",
+    "created_at": "2026-04-24T16:58:28.378833+00:00",
+    "updated_at": "2026-04-24T16:58:28.378833+00:00"
+  },
+  {
+    "id": "msg-1777049953275-6tsc2vn8a",
+    "chat_id": "chat-3",
+    "user_id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "content": "Test",
+    "reply_to_message_id": null,
+    "created_at": "2026-04-24T16:59:13.359121+00:00",
+    "updated_at": "2026-04-24T16:59:13.359121+00:00"
+  },
+  {
+    "id": "msg-1777051415002-2db2azhzo",
+    "chat_id": "chat-8",
+    "user_id": "9248265d-ff16-4d26-a989-5ccb01fea6e2",
+    "content": "The brst ever",
+    "reply_to_message_id": "msg-8-3",
+    "created_at": "2026-04-24T17:23:35.053457+00:00",
+    "updated_at": "2026-04-24T17:23:35.053457+00:00"
+  },
+  {
+    "id": "msg-1777056979398-llvsva1m0",
+    "chat_id": "chat-4",
+    "user_id": "cf0d0cc4-cb26-4adf-9b49-69fbc4cec7dd",
+    "content": "Test",
+    "reply_to_message_id": "msg-4-3",
+    "created_at": "2026-04-24T18:56:19.528496+00:00",
+    "updated_at": "2026-04-24T18:56:19.528496+00:00"
+  },
+  {
+    "id": "msg-1777107966035-j9n85h1wl",
+    "chat_id": "chat-8",
+    "user_id": "54f65c59-e7b3-43f2-89d9-201344bab730",
+    "content": "Test \nTest",
+    "reply_to_message_id": "msg-1777051415002-2db2azhzo",
+    "created_at": "2026-04-25T09:06:06.123572+00:00",
+    "updated_at": "2026-04-25T09:06:06.123572+00:00"
+  },
+  {
+    "id": "msg-1777107979877-i2kbfqlgy",
+    "chat_id": "chat-8",
+    "user_id": "54f65c59-e7b3-43f2-89d9-201344bab730",
+    "content": "Test",
+    "reply_to_message_id": "msg-8-3",
+    "created_at": "2026-04-25T09:06:19.963163+00:00",
+    "updated_at": "2026-04-25T09:06:19.963163+00:00"
+  }
+]
