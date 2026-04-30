@@ -1,19 +1,24 @@
-import { trpc } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
+import { accountApi } from "@/lib/api-rest";
 
 export type SubscriptionStatus = "loading" | "active" | "expired" | "none";
 
 /**
  * Hook that checks the current user's subscription status.
  * Returns the status and subscription data for UI decisions.
+ *
+ * Backend currently has no /api/account/subscription endpoint, so
+ * accountApi.getSubscription returns a synthetic active "free" plan
+ * until the real endpoint ships. This keeps the app functional
+ * against the Beget contour.
  */
 export function useSubscriptionGuard() {
-  const { data: subscription, isLoading, error } = trpc.account.getSubscription.useQuery(
-    undefined,
-    {
-      retry: 1,
-      staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    }
-  );
+  const { data: subscription, isLoading, error } = useQuery({
+    queryKey: ["account", "subscription"],
+    queryFn: () => accountApi.getSubscription(),
+    retry: 1,
+    staleTime: 5 * 60 * 1000,
+  });
 
   if (isLoading) {
     return { status: "loading" as SubscriptionStatus, subscription: null };
@@ -32,12 +37,10 @@ export function useSubscriptionGuard() {
     }
   }
 
-  // Check status field
   if (subscription.status === "canceled" || subscription.status === "expired") {
     return { status: "expired" as SubscriptionStatus, subscription };
   }
 
-  // Free plan is always active (no expiry)
   if (subscription.plan === "free") {
     return { status: "active" as SubscriptionStatus, subscription };
   }

@@ -4,7 +4,8 @@ import { useColors } from "@/hooks/use-colors";
 import { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { cn } from "@/lib/utils";
-import { trpc } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
+import { chatApi } from "@/lib/api-rest";
 import { useSubscriptionGuard } from "@/hooks/use-subscription-guard";
 import { SubscriptionExpired } from "@/components/subscription-expired";
 
@@ -29,7 +30,9 @@ export default function ChatsScreen() {
   const [muteStatus, setMuteStatus] = useState<Record<string, boolean>>({});
 
   // Fetch chats list with timeout
-  const { data: chatsList, isLoading: chatsLoading, error: queryError } = trpc.chat.list.useQuery(undefined, {
+  const { data: chatsList, isLoading: chatsLoading, error: queryError } = useQuery({
+    queryKey: ["chats", "list"],
+    queryFn: () => chatApi.list(),
     retry: 1,
     retryDelay: 1000,
   });
@@ -90,7 +93,7 @@ export default function ChatsScreen() {
 
   // ─── Subscription guard ─── block access if expired (after all hooks)
   if (subStatus === "expired") {
-    return <SubscriptionExpired expiresAt={subData?.expires_at || subData?.current_period_end} />;
+    return <SubscriptionExpired expiresAt={(subData as any)?.expires_at || (subData as any)?.current_period_end || undefined} />;
   }
 
   const handleChatPress = (chatId: string) => {

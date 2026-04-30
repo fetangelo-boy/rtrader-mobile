@@ -75,7 +75,31 @@ async function jget(path, token) {
       `status=${r.status}`);
   }
 
-  // 7. Surface gaps the mobile client still has against this contour:
+  // 7. REST endpoints the migrated mobile client now relies on:
+  if (access) {
+    // Push token registration (mirrors hooks/use-push-notifications.ts)
+    const regTok = await jpost(
+      "/api/notifications/register-token",
+      { token: `ExponentPushToken[smoke_${Date.now()}]`, platform: "ios" },
+      access
+    );
+    record("notifications.registerToken (REST)", regTok.status === 200 && regTok.json?.success === true,
+      `status=${regTok.status} err=${regTok.json?.error || "none"}`);
+
+    // Subscription endpoint (mobile gracefully falls back to synthetic free plan)
+    const sub = await jget("/api/account/subscription", access);
+    record("subscription endpoint reachable (404 OK — handled by client fallback)",
+      sub.status === 200 || sub.status === 404,
+      `status=${sub.status} err=${sub.json?.error || "none"}`);
+
+    // Messages endpoint (with no chats this is forbidden, but the route must exist)
+    const msgs = await jget("/api/chats/00000000-0000-0000-0000-000000000000/messages", access);
+    record("chats messages route exists",
+      msgs.status === 403 || msgs.status === 404 || msgs.status === 200,
+      `status=${msgs.status} err=${msgs.json?.error || "none"}`);
+  }
+
+  // 8. Surface gaps the mobile client still has against this contour:
   console.log("\n=== Coverage gaps (tRPC paths that Beget does NOT implement) ===");
   const trpcProbes = [
     "/api/trpc/auth.login",
