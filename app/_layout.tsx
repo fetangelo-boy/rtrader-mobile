@@ -21,7 +21,6 @@ import {
 } from "react-native-safe-area-context";
 import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
 
-import { trpc, createTRPCClient } from "@/lib/trpc";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 
@@ -34,7 +33,7 @@ export const unstable_settings = {
 
 /**
  * Inner component that initializes push notifications.
- * Must be inside trpc.Provider and QueryClientProvider to use tRPC hooks.
+ * Mounted inside QueryClientProvider so any react-query hooks resolve.
  */
 function PushNotificationsInitializer() {
   usePushNotifications();
@@ -78,8 +77,6 @@ export default function RootLayout() {
         },
       }),
   );
-  const [trpcClient] = useState(() => createTRPCClient());
-
   // Ensure minimum 8px padding for top and bottom on mobile
   const providerInitialMetrics = useMemo(() => {
     const metrics = initialWindowMetrics ?? { insets: initialInsets, frame: initialFrame };
@@ -95,22 +92,20 @@ export default function RootLayout() {
 
   const content = (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>
-          {/* Initialize push notifications inside providers so tRPC hooks work */}
-          <PushNotificationsInitializer />
-          {/* Default to hiding native headers so raw route segments don't appear (e.g. "(tabs)", "products/[id]"). */}
-          {/* If a screen needs the native header, explicitly enable it and set a human title via Stack.Screen options. */}
-          {/* in order for ios apps tab switching to work properly, use presentation: "fullScreenModal" for login page, whenever you decide to use presentation: "modal*/}
-          <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="chat/[id]" />
-            <Stack.Screen name="oauth/callback" />
-          </Stack>
-          <StatusBar style="auto" />
-        </QueryClientProvider>
-      </trpc.Provider>
+      <QueryClientProvider client={queryClient}>
+        {/* Push notifications init lives under react-query so its hooks resolve. */}
+        <PushNotificationsInitializer />
+        {/* Default to hiding native headers so raw route segments don't appear (e.g. "(tabs)", "products/[id]"). */}
+        {/* If a screen needs the native header, explicitly enable it and set a human title via Stack.Screen options. */}
+        {/* in order for ios apps tab switching to work properly, use presentation: "fullScreenModal" for login page, whenever you decide to use presentation: "modal*/}
+        <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="chat/[id]" />
+          <Stack.Screen name="oauth/callback" />
+        </Stack>
+        <StatusBar style="auto" />
+      </QueryClientProvider>
     </GestureHandlerRootView>
   );
 

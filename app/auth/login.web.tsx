@@ -1,10 +1,22 @@
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import { Alert } from "react-native";
-import * as SupabaseAuth from "@/lib/supabase-auth";
+import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 import { useColors } from "@/hooks/use-colors";
 
 const TELEGRAM_BOT_URL = "https://t.me/rtrader_mobapp_bot";
+const SESSION_TOKEN_KEY = "jwt_access_token";
+const REFRESH_TOKEN_KEY = "jwt_refresh_token";
+const USER_INFO_KEY = "jwt_user_info";
+
+async function persistToken(key: string, value: string) {
+  if (Platform.OS !== "web") {
+    await SecureStore.setItemAsync(key, value);
+  } else if (typeof window !== "undefined") {
+    window.localStorage.setItem(key, value);
+  }
+}
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -23,13 +35,44 @@ export default function LoginScreen() {
 
     try {
       setLoading(true);
-      const result = await SupabaseAuth.signInWithEmail(email, password);
-      console.log("[Login] Sign in successful:", result.user?.email);
+      const apiUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:3000";
+
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || data?.error) {
+        const code = data?.error || "login_failed";
+        throw new Error(code);
+      }
+
+      const { accessToken, refreshToken, user } = data;
+      if (!accessToken) {
+        throw new Error("Invalid response from server");
+      }
+
+      await persistToken(SESSION_TOKEN_KEY, accessToken);
+      if (refreshToken) await persistToken(REFRESH_TOKEN_KEY, refreshToken);
+      if (user) await persistToken(USER_INFO_KEY, JSON.stringify(user));
+
+      console.log("[Login.web] Sign in successful:", user?.email);
       router.replace("/(tabs)/chats");
     } catch (error: any) {
-      console.error("[Login] Error:", error);
+      console.error("[Login.web] Error:", error);
       let msg = error.message || "Не удалось войти в аккаунт";
-      if (msg.includes("Invalid login")) msg = "Неверный email или пароль.";
+      if (msg === "invalid_credentials" || msg.includes("Invalid login")) {
+        msg = "Неверный email или пароль.";
+      } else if (msg === "user_not_found") {
+        msg = "Пользователь не найден.";
+      } else if (msg === "invalid_input") {
+        msg = "Заполните email и пароль.";
+      } else if (msg.includes("Network") || msg.includes("Failed to fetch")) {
+        msg = "Ошибка сети. Проверьте интернет-соединение.";
+      }
       Alert.alert("Ошибка входа", msg);
     } finally {
       setLoading(false);

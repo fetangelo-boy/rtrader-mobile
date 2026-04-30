@@ -1,40 +1,20 @@
-import { View, Text, TextInput, Pressable, ActivityIndicator, Alert, ScrollView } from "react-native";
+import { View, Text, Pressable, ScrollView, Linking } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { useState } from "react";
 import { useRouter } from "expo-router";
-import * as SupabaseAuth from "@/lib/supabase-auth";
+
+const TELEGRAM_BOT_URL = "https://t.me/rtrader_mobapp_bot";
 
 export default function ForgotPasswordScreen() {
   const colors = useColors();
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
-
-  const handleResetPassword = async () => {
-    if (!email.trim()) {
-      Alert.alert("Ошибка", "Пожалуйста, введите ваш email");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await SupabaseAuth.resetPassword(email);
-      setSent(true);
-      Alert.alert(
-        "Успешно",
-        "Письмо для восстановления пароля отправлено на ваш email. Пожалуйста, проверьте входящие письма."
-      );
-    } catch (error: any) {
-      Alert.alert("Ошибка", error.message || "Не удалось отправить письмо");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleBackToLogin = () => {
     router.back();
+  };
+
+  const handleOpenTelegram = () => {
+    Linking.openURL(TELEGRAM_BOT_URL).catch(() => {});
   };
 
   return (
@@ -49,59 +29,53 @@ export default function ForgotPasswordScreen() {
             </Pressable>
             <Text className="text-3xl font-bold text-foreground">Восстановление доступа</Text>
             <Text className="text-sm text-muted mt-2">
-              Введите ваш email, и мы отправим ссылку для восстановления пароля
+              Самостоятельное восстановление пароля временно недоступно.
             </Text>
           </View>
 
-          {/* Email Input */}
-          <View className="mb-6">
-            <Text className="text-sm font-semibold text-foreground mb-2">Email</Text>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="your@email.com"
-              placeholderTextColor={colors.muted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              editable={!loading}
-              className="px-4 py-3 rounded-lg text-foreground"
-              style={{
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-                borderWidth: 1,
-              }}
-            />
+          {/* Info card */}
+          <View
+            className="p-4 rounded-lg mb-6"
+            style={{
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              borderWidth: 1,
+            }}
+          >
+            <Text className="text-sm text-foreground leading-5">
+              Чтобы восстановить доступ к аккаунту, напишите в наш Telegram-бот.
+              Поддержка вышлет вам новые данные для входа после проверки.
+            </Text>
           </View>
 
-          {/* Submit Button */}
+          {/* Telegram button */}
           <Pressable
-            onPress={handleResetPassword}
-            disabled={loading}
+            onPress={handleOpenTelegram}
             style={({ pressed }) => [
               {
-                opacity: pressed ? 0.8 : 1,
-                backgroundColor: colors.primary,
+                opacity: pressed ? 0.85 : 1,
+                backgroundColor: "#0088cc",
+                borderRadius: 8,
+                paddingVertical: 14,
+                flexDirection: "row",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: 8,
               },
-              { borderRadius: 8, paddingVertical: 14 },
             ]}
           >
-            {loading ? (
-              <ActivityIndicator color={colors.background} />
-            ) : (
-              <Text className="text-center font-semibold text-background text-base">
-                Отправить ссылку
-              </Text>
-            )}
+            <Text style={{ fontSize: 18 }}>✈️</Text>
+            <Text style={{ color: "#ffffff", fontWeight: "600", fontSize: 15 }}>
+              Написать в Telegram-поддержку
+            </Text>
           </Pressable>
 
-          {/* Info */}
-          {sent && (
-            <View className="mt-6 p-4 rounded-lg" style={{ backgroundColor: colors.surface }}>
-              <Text className="text-sm text-foreground text-center">
-                ✓ Письмо отправлено! Проверьте вашу почту и следуйте инструкциям.
-              </Text>
-            </View>
-          )}
+          {/* Back to login */}
+          <Pressable onPress={handleBackToLogin} className="mt-4">
+            <Text className="text-center text-sm text-muted">
+              Вернуться к экрану входа
+            </Text>
+          </Pressable>
         </View>
       </ScrollView>
     </ScreenContainer>
