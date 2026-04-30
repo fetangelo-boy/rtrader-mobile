@@ -3,7 +3,8 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { useAuth } from './use-auth';
-import { trpc } from '@/lib/trpc';
+import { useMutation } from '@tanstack/react-query';
+import { notificationsApi } from '@/lib/api-rest';
 
 // Set default notification handler
 Notifications.setNotificationHandler({
@@ -25,7 +26,10 @@ export function usePushNotifications() {
   const { user } = useAuth();
   const notificationListener = useRef<Notifications.Subscription | null>(null);
   const responseListener = useRef<Notifications.Subscription | null>(null);
-  const registerTokenMutation = trpc.notifications.registerToken.useMutation();
+  const registerTokenMutation = useMutation({
+    mutationFn: (input: { token: string; platform: 'ios' | 'android' | 'web' }) =>
+      notificationsApi.registerToken(input.token, input.platform),
+  });
 
   useEffect(() => {
     if (!user) return;

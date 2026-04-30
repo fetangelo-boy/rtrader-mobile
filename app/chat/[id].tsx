@@ -4,7 +4,8 @@ import { useColors } from "@/hooks/use-colors";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { trpc } from "@/lib/trpc";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { chatApi } from "@/lib/api-rest";
 import { Platform, Keyboard } from "react-native";
 
 interface Message {
@@ -32,14 +33,21 @@ export default function ChatDetailScreen() {
   const scrollViewRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
 
-  // Fetch chat info for header
-  const { data: chatInfo } = trpc.chat.getChatInfo.useQuery({ chatId: Number(chatId) });
+  const queryClient = useQueryClient();
+  const chatIdStr = String(chatId);
 
-  // Fetch chat messages via tRPC
-  const { data: messagesData, isLoading: messagesLoading, error: messagesError } = trpc.chat.getMessages.useQuery({
-    chatId: Number(chatId),
-    limit: 50,
-    offset: 0,
+  // Fetch chat info for header (derived from chats list — backend has no /api/chats/:id)
+  const { data: chatInfo } = useQuery({
+    queryKey: ["chat", "info", chatIdStr],
+    queryFn: () => chatApi.getInfo(chatIdStr),
+    enabled: !!chatIdStr,
+  });
+
+  // Fetch chat messages via REST
+  const { data: messagesData, isLoading: messagesLoading, error: messagesError } = useQuery({
+    queryKey: ["chat", "messages", chatIdStr],
+    queryFn: () => chatApi.getMessages(chatIdStr, 50, 0),
+    enabled: !!chatIdStr,
   });
 
   // Debug logging
@@ -50,18 +58,24 @@ export default function ChatDetailScreen() {
     console.log("[ChatDetail] messagesError:", messagesError);
   }, [messagesData, messagesLoading, messagesError, chatId]);
 
-  // Send message mutation
-  const sendMessageMutation = trpc.chat.sendMessage.useMutation({
+  // Send message mutation (REST)
+  const sendMessageMutation = useMutation({
+    mutationFn: (input: { content: string; replyToId?: string }) =>
+      chatApi.sendMessage(chatIdStr, input),
     onSuccess: (sentMessage: any) => {
-      const profile = sentMessage.profiles;
-      const author = (profile?.username && String(profile.username).trim()) ? String(profile.username).trim() : "Вы";
+      const profile = sentMessage?.profiles || sentMessage?.author;
+      const author = (profile?.username && String(profile.username).trim())
+        ? String(profile.username).trim()
+        : (profile?.name && String(profile.name).trim())
+          ? String(profile.name).trim()
+          : "Вы";
       const newMsg: Message = {
-        id: sentMessage.id,
-        user_id: sentMessage.user_id,
+        id: String(sentMessage.id),
+        user_id: String(sentMessage.user_id || sentMessage.userId || ""),
         author: author,
         content: sentMessage.content,
-        created_at: sentMessage.created_at,
-        reply_to_message_id: sentMessage.reply_to_message_id,
+        created_at: sentMessage.created_at || sentMessage.createdAt,
+        reply_to_message_id: sentMessage.reply_to_message_id || sentMessage.replyToId || undefined,
         replyTo: replyingTo ? {
           author: replyingTo.author,
           content: replyingTo.content,
@@ -71,11 +85,11 @@ export default function ChatDetailScreen() {
       setMessages((prev) => [...prev, newMsg]);
       setNewMessage("");
       setReplyingTo(null);
-      // Dismiss keyboard so user sees their sent message
       Keyboard.dismiss();
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 150);
+      queryClient.invalidateQueries({ queryKey: ["chat", "messages", chatIdStr] });
     },
     onError: (error: any) => {
       console.error("Failed to send message:", error);
@@ -86,26 +100,31 @@ export default function ChatDetailScreen() {
   useEffect(() => {
     if (messagesData) {
       const formattedMessages: Message[] = messagesData.map((msg: any) => {
-        // profiles is an object, not an array
-        const profile = msg.profiles;
-        const author = (profile?.username && String(profile.username).trim()) ? String(profile.username).trim() : "Пользователь";
-        
-        // reply_to_msg is now a single object (or null) resolved server-side
+        // REST shape: author is `{ id, name, email }` or legacy `profiles.username`
+        const profile = msg.author || msg.profiles;
+        const author = (profile?.username && String(profile.username).trim())
+          ? String(profile.username).trim()
+          : (profile?.name && String(profile.name).trim())
+            ? String(profile.name).trim()
+            : "Пользователь";
+
         const replyToMsg = msg.reply_to_msg && typeof msg.reply_to_msg === 'object' && !Array.isArray(msg.reply_to_msg)
           ? msg.reply_to_msg
           : null;
-        
+
         return {
-          id: msg.id,
-          user_id: msg.user_id,
+          id: String(msg.id),
+          user_id: String(msg.user_id || msg.userId || ""),
           author: author,
           content: msg.content,
-          created_at: msg.created_at,
-          reply_to_message_id: msg.reply_to_message_id,
+          created_at: msg.created_at || msg.createdAt,
+          reply_to_message_id: msg.reply_to_message_id || msg.replyToId || undefined,
           replyTo: replyToMsg ? {
             author: (() => {
-              const rp = replyToMsg.profiles;
-              return (rp?.username && String(rp.username).trim()) ? String(rp.username).trim() : "Пользователь";
+              const rp = replyToMsg.author || replyToMsg.profiles;
+              if (rp?.username && String(rp.username).trim()) return String(rp.username).trim();
+              if (rp?.name && String(rp.name).trim()) return String(rp.name).trim();
+              return "Пользователь";
             })(),
             content: replyToMsg.content,
           } : undefined,
@@ -128,9 +147,8 @@ export default function ChatDetailScreen() {
 
     console.log("[Chat] Sending message...");
     sendMessageMutation.mutate({
-      chatId: Number(chatId),
       content: newMessage.trim(),
-      replyToId: replyingTo?.id ? Number(replyingTo.id) : undefined,
+      replyToId: replyingTo?.id ? String(replyingTo.id) : undefined,
     });
     
     // Keyboard will be dismissed in onSuccess callback

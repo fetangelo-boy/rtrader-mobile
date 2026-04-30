@@ -42,42 +42,33 @@ export default function LoginScreen() {
     try {
       setLoading(true);
       const apiUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:3000";
-      
-      // Call the new JWT login endpoint via tRPC
-      const response = await fetch(`${apiUrl}/api/trpc/auth.login`, {
+
+      // Beget production contour: plain REST at /api/auth/login.
+      // Response shape: { user, accessToken, refreshToken } | { error }
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          json: {
-            email: emailVal,
-            password: passwordVal,
-          },
-        }),
+        body: JSON.stringify({ email: emailVal, password: passwordVal }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || "Login failed");
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || data?.error) {
+        const code = data?.error || "login_failed";
+        throw new Error(code);
       }
 
-      const data = await response.json();
-      
-      // Extract the result from tRPC response format
-      const result = data.result?.data;
-      
-      if (!result?.success || !result?.accessToken) {
+      const { accessToken, refreshToken, user } = data;
+      if (!accessToken) {
         throw new Error("Invalid response from server");
       }
 
-      // Store JWT tokens in secure storage
-      await SecureStore.setItemAsync(SESSION_TOKEN_KEY, result.accessToken);
-      if (result.refreshToken) {
-        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, result.refreshToken);
+      await SecureStore.setItemAsync(SESSION_TOKEN_KEY, accessToken);
+      if (refreshToken) {
+        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
       }
-
-      // Store user info for quick access
-      if (result.user) {
-        await SecureStore.setItemAsync(USER_INFO_KEY, JSON.stringify(result.user));
+      if (user) {
+        await SecureStore.setItemAsync(USER_INFO_KEY, JSON.stringify(user));
       }
 
       router.replace("/(tabs)/chats");
@@ -85,10 +76,12 @@ export default function LoginScreen() {
       let errorMessage = error.message || "Не удалось войти в аккаунт";
       if (error.message?.includes("Network") || error.message?.includes("Failed to fetch")) {
         errorMessage = "Ошибка сети. Проверьте интернет-соединение.";
-      } else if (error.message?.includes("Invalid email or password")) {
+      } else if (error.message === "invalid_credentials" || error.message?.includes("Invalid email or password")) {
         errorMessage = "Неверный email или пароль.";
-      } else if (error.message?.includes("User not found")) {
+      } else if (error.message === "user_not_found" || error.message?.includes("User not found")) {
         errorMessage = "Пользователь не найден.";
+      } else if (error.message === "invalid_input") {
+        errorMessage = "Заполните email и пароль.";
       }
       Alert.alert("Ошибка входа", errorMessage);
     } finally {

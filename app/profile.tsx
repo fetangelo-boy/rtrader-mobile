@@ -15,8 +15,8 @@ import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
-import { trpc } from "@/lib/trpc";
-import { updatePassword } from "@/lib/supabase-auth";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { profileApi } from "@/lib/api-rest";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -104,14 +104,17 @@ export default function ProfileScreen() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // ── tRPC queries & mutations ──────────────────────────────────────────────
-  const utils = trpc.useUtils();
+  // ── REST queries & mutations ──────────────────────────────────────────────
+  const queryClient = useQueryClient();
 
   const {
     data: profile,
     isLoading,
     error,
-  } = trpc.profile.getProfile.useQuery();
+  } = useQuery({
+    queryKey: ["profile"],
+    queryFn: () => profileApi.get(),
+  });
 
   // Sync username input when profile loads
   useEffect(() => {
@@ -120,15 +123,17 @@ export default function ProfileScreen() {
     }
   }, [profile?.username]);
 
-  const updateProfileMutation = trpc.profile.updateProfile.useMutation({
+  const updateProfileMutation = useMutation({
+    mutationFn: (input: { username?: string }) => profileApi.update(input),
     onSuccess: () => {
-      utils.profile.getProfile.invalidate();
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 
-  const uploadAvatarMutation = trpc.profile.uploadAvatar.useMutation({
+  const uploadAvatarMutation = useMutation({
+    mutationFn: (input: { base64: string; mimeType: string }) => profileApi.uploadAvatar(input),
     onSuccess: () => {
-      utils.profile.getProfile.invalidate();
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 
@@ -223,13 +228,8 @@ export default function ProfileScreen() {
 
     setChangingPassword(true);
     try {
-      await updatePassword(trimmedNew);
-      Alert.alert("Готово", "Пароль успешно изменён.");
-      setNewPassword("");
-      setConfirmPassword("");
-      setShowPasswordForm(false);
-      setShowNewPassword(false);
-      setShowConfirmPassword(false);
+      // Backend has no self-service password change endpoint yet.
+      throw new Error("Смена пароля временно недоступна. Обратитесь в службу поддержки.");
     } catch (err: any) {
       const msg = err?.message || "Не удалось сменить пароль";
       Alert.alert("Ошибка", msg);
@@ -268,7 +268,7 @@ export default function ProfileScreen() {
             Не удалось загрузить профиль
           </Text>
           <Pressable
-            onPress={() => utils.profile.getProfile.invalidate()}
+            onPress={() => queryClient.invalidateQueries({ queryKey: ["profile"] })}
             style={({ pressed }) => [
               styles.retryBtn,
               { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 },

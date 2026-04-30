@@ -4,7 +4,8 @@ import { ScreenContainer } from "@/components/screen-container";
 import { VersionInfo } from "@/components/version-info";
 import { useColors } from "@/hooks/use-colors";
 import { cn } from "@/lib/utils";
-import { trpc } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
+import { profileApi, accountApi } from "@/lib/api-rest";
 import { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
@@ -72,7 +73,10 @@ function ProfileCard({
   colors: ReturnType<typeof useColors>;
   onEdit: () => void;
 }) {
-  const { data: profile, isLoading } = trpc.profile.getProfile.useQuery();
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ["profile"],
+    queryFn: () => profileApi.get(),
+  });
 
   const displayName = profile?.username || profile?.email?.split("@")[0] || "Пользователь";
   const initials = displayName
@@ -210,12 +214,22 @@ export default function AccountScreen() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch subscription status
-  const { data: subData, isLoading: subLoading } = trpc.account.getSubscription.useQuery();
+  // Fetch subscription status (REST, with synthetic fallback)
+  const { data: subData, isLoading: subLoading } = useQuery({
+    queryKey: ["account", "subscription"],
+    queryFn: () => accountApi.getSubscription(),
+    staleTime: 5 * 60 * 1000,
+  });
 
   useEffect(() => {
     if (subData) {
-      setSubscription(subData);
+      setSubscription({
+        id: subData.id || "synthetic",
+        plan: subData.plan,
+        status: subData.status,
+        current_period_end: subData.current_period_end || subData.expires_at || "",
+        created_at: subData.created_at || new Date().toISOString(),
+      });
       setLoading(false);
     }
   }, [subData]);
