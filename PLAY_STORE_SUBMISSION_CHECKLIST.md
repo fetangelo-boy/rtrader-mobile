@@ -1,9 +1,10 @@
 # Google Play Store Submission Checklist
 
 **App:** RTrader Mobile  
-**Version:** 1.0.0  
+**Version:** 1.0.4  
 **Status:** Ready for submission  
-**Date:** 2026-05-01
+**Date:** 2026-05-01  
+**Latest Fix:** Fixed JSON parse error in login flow (v1.0.4)
 
 ---
 
@@ -15,8 +16,8 @@
 - [x] All critical features working
 - [x] No crashes or major bugs
 - [x] Minification enabled
-- [x] Version code: 1
-- [x] Version name: 1.0.0
+- [x] Version code: 4
+- [x] Version name: 1.0.4
 - [x] Target SDK: 34+
 - [x] Min SDK: 24
 

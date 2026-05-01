@@ -1,7 +1,8 @@
 # What You Need to Provide for Google Play Store Submission
 
-**App:** RTrader Mobile v1.0.0  
-**Status:** Ready for submission (waiting for your input)
+**App:** RTrader Mobile v1.0.4  
+**Status:** Ready for submission (waiting for your input)  
+**Latest Fix:** Fixed JSON parse error in login flow
 
 ---
 
@@ -232,8 +233,14 @@ RTrader — это мобильное приложение для трейдер
 
 ## Optional: Release Notes
 
-### For this release (v1.0.0):
+### For this release (v1.0.4):
 ```
+Version 1.0.4 - Bug Fix Release
+
+Bug fixes:
+• Fixed JSON parse error in login flow
+• Improved error handling in authentication
+
 Version 1.0.0 - Initial Release
 
 Features:
@@ -246,6 +253,8 @@ Features:
 • Push notifications support
 
 This is the first release of RTrader mobile app.
+
+Version 1.0.4 includes critical bug fixes for authentication reliability.
 ```
 
 ### Timeline:
