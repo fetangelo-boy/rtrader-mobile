@@ -289,3 +289,29 @@
 - [ ] Plan zero-sync architecture: no ongoing Supabase dependency
 - [ ] Create deployment guide for Beget (Docker/PM2, Nginx, SSL)
 - [ ] Plan cutover strategy: switch API endpoints → new backend
+
+
+## Release-Readiness Audit (2026-05-01)
+- [x] Check app version (1.0.0 in package.json, 1.0.2 in app.config.ts - MISMATCH)
+- [x] Check Supabase integration (lib/supabase.ts uses ESM import ✓)
+- [x] Check deep links configuration (rtrader:// scheme)
+- [x] Check bot integration (@rtrader_mobapp_bot verified ✓)
+- [x] Run test suite: 37/39 tests passing, 2 test files with import errors
+- [ ] Fix test file import errors (e2e-auth.test.ts, trpc-chat.test.ts)
+- [ ] Fix session refresh token assertion (smoke test)
+- [ ] Verify production Supabase policies (RLS)
+- [ ] Verify navigation and session restore
+- [ ] Check build configuration for production
+- [ ] Verify all environment variables are set correctly
+- [ ] Test full E2E flow on real device (login → chats → reply → mute → account → logout)
+
+## Blockers Found
+- Test file import errors (non-blocking for release, but should fix)
+- Session refresh token test failing (non-blocking, token generation works)
+- Version mismatch between package.json (1.0.0) and app.config.ts (1.0.2)
+
+## Next Steps
+1. Fix version mismatch (align to 1.0.0)
+2. Fix test file imports
+3. Verify production build doesn't have import errors
+4. Prepare Android release build
