@@ -350,3 +350,13 @@
 - [ ] Submit AAB to Google Play Store
 - [ ] Monitor review status
 - [ ] Plan v1.1 features (media uploads, advanced search)
+
+
+## BLOCKING ISSUE — Telegram Bot Restoration (2026-05-01)
+- [ ] Receive new Telegram bot token from user
+- [ ] Update BOT_TOKEN in environment variables
+- [ ] Restore webhook connection to backend
+- [ ] Verify /start command works
+- [ ] Extract test account from Supabase
+- [ ] Conduct APK testing with test account
+- [ ] Deliver complete tester instructions (new standard format)
