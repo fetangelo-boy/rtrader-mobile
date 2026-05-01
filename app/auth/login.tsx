@@ -63,7 +63,8 @@ export default function LoginScreen() {
       const data = await response.json();
       
       // Extract the result from tRPC response format
-      const result = data.result?.data;
+      // tRPC wraps the response in { result: { data: { json: {...} } } }
+      const result = data.result?.data?.json;
       
       if (!result?.success || !result?.accessToken) {
         throw new Error("Invalid response from server");
