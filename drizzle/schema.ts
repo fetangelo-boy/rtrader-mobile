@@ -169,3 +169,20 @@ export const chatParticipants = mysqlTable("chat_participants", {
 
 export type ChatParticipant = typeof chatParticipants.$inferSelect;
 export type InsertChatParticipant = typeof chatParticipants.$inferInsert;
+
+/**
+ * Subscriptions — user subscription plans and status
+ */
+export const subscriptions = mysqlTable("subscriptions", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  userId: varchar("userId", { length: 36 }).notNull().unique(),
+  plan: mysqlEnum("plan", ["free", "basic", "premium", "vip"]).default("free").notNull(),
+  status: mysqlEnum("status", ["active", "canceled", "trialing", "expired"]).default("active").notNull(),
+  startedAt: timestamp("startedAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
