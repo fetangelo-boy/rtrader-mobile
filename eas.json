@@ -16,13 +16,13 @@
     },
     "production": {
       "autoIncrement": true,
-      "distribution": "store",
+      "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://3000-rtradermob-gjsezgkc.manus.space"
       },
       "android": {
-        "buildType": "app-bundle",
-        "gradleCommand": ":app:bundleRelease"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       }
     }
   },
