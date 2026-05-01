@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 
-const TELEGRAM_BOT_URL = "https://t.me/rtrader_mobapp_bot";
+const TELEGRAM_BOT_URL = "https://t.me/rtrader_mobapp_bot?start=app";
 const SESSION_TOKEN_KEY = "jwt_access_token";
 const REFRESH_TOKEN_KEY = "jwt_refresh_token";
 const USER_INFO_KEY = "jwt_user_info";
