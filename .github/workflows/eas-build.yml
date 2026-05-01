@@ -1,5 +1,6 @@
 name: EAS Build APK
 
+
 on:
   workflow_dispatch:
     inputs:
@@ -22,6 +23,7 @@ on:
           - preview
           - development
 
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -29,14 +31,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
+          
 
       - name: Install dependencies
         run: npm ci
+
 
       - name: Setup EAS
         uses: expo/expo-github-action@v8
@@ -44,12 +48,14 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
+
       - name: Build with EAS
         run: |
           eas build \
             --platform ${{ github.event.inputs.platform }} \
             --profile ${{ github.event.inputs.profile }} \
             --non-interactive
+
 
       - name: Upload build artifacts
         if: always()
