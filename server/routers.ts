@@ -7,6 +7,9 @@ import { accountRouter } from "./routers/account";
 import { profileRouter } from "./routers/profile";
 import { notificationsRouter } from "./routers/notifications";
 import { authRouter } from "./routers/auth";
+import { subscriptionsRouter } from "./routers/subscriptions";
+import { protectedSubscriptionRouter } from "./routers/protected-subscription";
+import { adminTrpcRouter } from "./routers/admin-trpc";
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -17,6 +20,9 @@ export const appRouter = router({
   account: accountRouter,
   profile: profileRouter,
   notifications: notificationsRouter,
+  subscriptions: subscriptionsRouter,
+  protectedSubscriptions: protectedSubscriptionRouter,
+  admin: adminTrpcRouter,
 });
 
 export type AppRouter = typeof appRouter;

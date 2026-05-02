@@ -181,6 +181,24 @@ export function registerAdminRoutes(app: Express) {
 
       console.log(`[Admin] Subscription ${subscriptionId} created for ${email}, expires: ${expiresAt.toISOString()}`);
 
+      // 4. Add user to all chats (role: subscriber for info_only, participant for interactive)
+      const { data: allChats } = await supabase.from("chats").select("id, type").like("id", "chat-%");
+      if (allChats?.length) {
+        const participantRows = allChats.map((chat: any) => ({
+          chat_id: chat.id,
+          user_id: userId,
+          role: chat.type === "info_only" ? "subscriber" : "participant",
+        }));
+        const { error: participantError } = await supabase.from("chat_participants").insert(participantRows);
+        if (participantError) {
+          console.error(`[Admin] chat_participants insert error:`, participantError.message);
+        } else {
+          console.log(`[Admin] Added ${email} to ${participantRows.length} chats`);
+        }
+      } else {
+        console.warn(`[Admin] No chats found to add user to`);
+      }
+
       res.json({
         success: true,
         user_id: userId,

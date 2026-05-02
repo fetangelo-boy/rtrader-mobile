@@ -1,4 +1,4 @@
-import { getDb } from "../db";
+import { drizzle } from "drizzle-orm/mysql2";
 import { subscriptionPlans, subscriptionRequests, paymentDetails } from "../../drizzle/schema_subscriptions";
 import { eq } from "drizzle-orm";
 // @ts-ignore
@@ -16,6 +16,15 @@ if (!BOT_TOKEN) {
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
+// Create single DB connection
+let _db: any = null;
+function getDb() {
+  if (!_db && process.env.DATABASE_URL) {
+    _db = drizzle(process.env.DATABASE_URL);
+  }
+  return _db;
+}
+
 /**
  * Format price for display
  */
@@ -28,43 +37,57 @@ function formatPrice(price: number): string {
  */
 export async function sendTariffMenu(chatId: number | string, userId: string): Promise<void> {
   try {
-    const db = await getDb();
-    if (!db) throw new Error("Database not available");
+    const db = getDb();
+    if (!db) {
+      await bot.sendMessage(chatId, "❌ Ошибка подключения к БД. Попробуйте позже.");
+      return;
+    }
 
+    console.log(`[Bot] Getting plans for chat ${chatId}`);
+    
     // Get all subscription plans
     const plans = await db.select().from(subscriptionPlans).orderBy(subscriptionPlans.durationDays);
 
+    console.log(`[Bot] Found ${plans.length} plans`);
+
     if (plans.length === 0) {
-      await bot.sendMessage(chatId, "❌ No subscription plans available at the moment.");
+      await bot.sendMessage(chatId, "❌ Тарифные планы временно недоступны. Попробуйте позже.");
       return;
     }
 
     // Create inline keyboard with plan options
-    const keyboard = plans.map((plan) => [
+    const keyboard = plans.map((plan: any) => [
       {
         text: `${plan.name} - ${formatPrice(Number(plan.priceRub))}`,
         callback_data: `tariff_${plan.id}`,
       },
     ]);
 
-    // Add cancel button
-    keyboard.push([{ text: "❌ Cancel", callback_data: "cancel" }]);
+    // Add home and cancel buttons
+    keyboard.push([{ text: "🏠 Главное меню", callback_data: "home" }]);
+    keyboard.push([{ text: "❌ Отмена", callback_data: "cancel" }]);
 
-    await bot.sendMessage(
-      chatId,
-      `📊 *Available Subscription Plans*\n\nChoose a plan to get started:\n\n${plans
-        .map((p) => `• *${p.name}* - ${formatPrice(Number(p.priceRub))}\n  Duration: ${p.durationDays} days`)
-        .join("\n\n")}`,
-      {
-        parse_mode: "Markdown",
-        reply_markup: {
-          inline_keyboard: keyboard,
-        },
-      }
-    );
+    const message = `📊 *Доступные тарифные планы*\n\nВыберите подходящий вам план:\n\n${plans
+      .map((p: any) => `• *${p.name}* - ${formatPrice(Number(p.priceRub))}\n  Период: ${p.durationDays} дней`)
+      .join("\n\n")}`;
+
+    console.log(`[Bot] Sending tariff menu to ${chatId}`);
+    
+    await bot.sendMessage(chatId, message, {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: keyboard,
+      },
+    });
+
+    console.log(`[Bot] Tariff menu sent successfully`);
   } catch (error) {
     console.error("Error sending tariff menu:", error);
-    await bot.sendMessage(chatId, "❌ Error loading subscription plans. Please try again later.");
+    try {
+      await bot.sendMessage(chatId, "❌ Ошибка при загрузке тарифов. Попробуйте позже.");
+    } catch (e) {
+      console.error("Failed to send error message:", e);
+    }
   }
 }
 
@@ -78,36 +101,58 @@ export async function sendPaymentInstructions(
   telegramName: string
 ): Promise<void> {
   try {
-    const db = await getDb();
-    if (!db) throw new Error("Database not available");
+    const db = getDb();
+    if (!db) {
+      await bot.sendMessage(chatId, "❌ Ошибка подключения к БД.");
+      return;
+    }
+
+    console.log(`[Bot] Getting plan ${planId}`);
 
     // Get plan details
-    const plan = await db
-      .select()
-      .from(subscriptionPlans)
-      .where(eq(subscriptionPlans.id, planId))
-      .limit(1);
+    const plan = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, planId)).limit(1);
 
     if (plan.length === 0) {
-      await bot.sendMessage(chatId, "❌ Plan not found.");
+      await bot.sendMessage(chatId, "❌ Тариф не найден.");
       return;
     }
 
     const selectedPlan = plan[0];
 
     // Get payment details
-    const paymentInfo = await db
-      .select()
-      .from(paymentDetails)
-      .where(eq(paymentDetails.isActive, 1))
-      .limit(1);
+    const paymentInfo = await db.select().from(paymentDetails).limit(1);
 
-    if (paymentInfo.length === 0) {
-      await bot.sendMessage(chatId, "❌ Payment details not configured.");
-      return;
-    }
+    const paymentMessage = `
+💳 *Инструкция по оплате*
 
-    const payment = paymentInfo[0];
+Вы выбрали тариф: *${selectedPlan.name}*
+Стоимость: *${formatPrice(Number(selectedPlan.priceRub))}*
+
+📋 *Реквизиты для оплаты:*
+Банк: *${paymentInfo[0]?.bank || "Т-Банк"}*
+Номер карты: \`${paymentInfo[0]?.cardNumber || "не указана"}\`
+ФИО: *${paymentInfo[0]?.recipientName || "не указано"}*
+Срок: ${paymentInfo[0]?.cardExpiry || "не указан"}
+
+📸 *Что дальше:*
+1. Переведите деньги по указанным реквизитам
+2. Сделайте скриншот платежа
+3. Отправьте скриншот в этот чат
+4. Администратор проверит платёж и активирует подписку
+
+⏰ Обычно активация занимает 5-10 минут.
+    `;
+
+    await bot.sendMessage(chatId, paymentMessage, {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "📸 Загрузить скриншот", callback_data: "upload_receipt" }],
+          [{ text: "🏠 Главное меню", callback_data: "home" }],
+          [{ text: "❌ Отмена", callback_data: "cancel" }],
+        ],
+      },
+    });
 
     // Create subscription request
     const requestId = uuidv4();
@@ -117,81 +162,53 @@ export async function sendPaymentInstructions(
       planId: planId,
       telegramId: String(chatId),
       firstName: telegramName,
-      email: `tg${chatId}@rtrader.app`,
-      status: "pending" as any,
+      email: `${chatId}@telegram.local`,
+      status: "pending",
     });
 
-    // Send payment instructions
-    const paymentMessage = `
-💳 *Payment Instructions*
-
-Plan: *${selectedPlan.name}*
-Price: *${formatPrice(Number(selectedPlan.priceRub))}*
-Duration: *${selectedPlan.durationDays} days*
-
-📍 *Payment Details:*
-Bank: ${payment.bank}
-Card: \`${payment.cardNumber}\`
-Expiry: ${payment.cardExpiry}
-Recipient: ${payment.recipientName}
-
-✅ *Steps:*
-1. Transfer ${formatPrice(Number(selectedPlan.priceRub))} to the card above
-2. Take a screenshot of the payment confirmation
-3. Send the screenshot to this chat
-4. Our admin will verify and activate your subscription
-
-⏱️ *Processing time:* Usually within 1-2 hours
-
-Request ID: \`${requestId}\`
-    `;
-
-    await bot.sendMessage(chatId, paymentMessage, {
-      parse_mode: "Markdown",
-    });
-
-    // Send keyboard for next steps
-    await bot.sendMessage(chatId, "What would you like to do?", {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "📤 Upload Receipt", callback_data: `upload_${requestId}` }],
-          [{ text: "🔄 Choose Another Plan", callback_data: "show_plans" }],
-          [{ text: "❌ Cancel", callback_data: "cancel" }],
-        ],
-      },
-    });
+    console.log(`[Bot] Subscription request created: ${requestId}`);
   } catch (error) {
     console.error("Error sending payment instructions:", error);
-    await bot.sendMessage(chatId, "❌ Error processing your request. Please try again later.");
+    try {
+      await bot.sendMessage(chatId, "❌ Ошибка при обработке запроса. Попробуйте позже.");
+    } catch (e) {
+      console.error("Failed to send error message:", e);
+    }
   }
 }
 
 /**
  * Send subscription status to user
  */
-export async function sendSubscriptionStatus(
-  chatId: number | string,
-  userId: string
-): Promise<void> {
+export async function sendSubscriptionStatus(chatId: number | string, userId: string): Promise<void> {
   try {
-    const db = await getDb();
-    if (!db) throw new Error("Database not available");
+    const db = getDb();
+    if (!db) {
+      await bot.sendMessage(chatId, "❌ Ошибка подключения к БД.");
+      return;
+    }
 
     // Get user's subscription requests
     const requests = await db
       .select()
       .from(subscriptionRequests)
-      .where(eq(subscriptionRequests.userId, userId));
+      .where(eq(subscriptionRequests.telegramId, String(chatId)))
+      .orderBy(subscriptionRequests.createdAt);
 
     if (requests.length === 0) {
       await bot.sendMessage(
         chatId,
-        "📋 *No subscription requests found*\n\nUse /subscribe to purchase a subscription.",
+        `📋 *Статус подписки*
+
+У вас нет активных запросов на подписку.
+
+Хотите подписаться? Используйте /subscribe`,
         {
           parse_mode: "Markdown",
           reply_markup: {
             inline_keyboard: [
-              [{ text: "🛒 Subscribe Now", callback_data: "show_plans" }],
+              [{ text: "🛒 Выбрать тариф", callback_data: "show_plans" }],
+              [{ text: "📞 Служба поддержки", callback_data: "contact_support" }],
             ],
           },
         }
@@ -202,35 +219,39 @@ export async function sendSubscriptionStatus(
     // Show latest request status
     const latestRequest = requests[requests.length - 1];
     let statusEmoji = "⏳";
-    let statusText = "Pending";
+    let statusText = "На рассмотрении";
 
     if (latestRequest.status === "approved") {
       statusEmoji = "✅";
-      statusText = "Approved";
+      statusText = "Одобрено";
     } else if (latestRequest.status === "rejected") {
       statusEmoji = "❌";
-      statusText = `Rejected: ${latestRequest.rejectionReason || "No reason provided"}`;
+      statusText = `Отклонено: ${latestRequest.rejectionReason || "Причина не указана"}`;
     }
 
     const statusMessage = `
-${statusEmoji} *Subscription Status*
+${statusEmoji} *Статус подписки*
 
-Status: *${statusText}*
-Created: ${latestRequest.createdAt.toLocaleDateString()}
+Статус: *${statusText}*
+Создано: ${latestRequest.createdAt.toLocaleDateString("ru-RU")}
     `;
 
     await bot.sendMessage(chatId, statusMessage, {
       parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [
-          [{ text: "🛒 Subscribe Now", callback_data: "show_plans" }],
-          [{ text: "📞 Contact Support", callback_data: "contact_support" }],
+          [{ text: "🛒 Выбрать тариф", callback_data: "show_plans" }],
+          [{ text: "🏠 Главное меню", callback_data: "home" }],
         ],
       },
     });
   } catch (error) {
     console.error("Error sending subscription status:", error);
-    await bot.sendMessage(chatId, "❌ Error retrieving subscription status. Please try again later.");
+    try {
+      await bot.sendMessage(chatId, "❌ Ошибка при получении статуса. Попробуйте позже.");
+    } catch (e) {
+      console.error("Failed to send error message:", e);
+    }
   }
 }
 
@@ -245,13 +266,13 @@ export async function notifyAdminNewRequest(
 ): Promise<void> {
   try {
     const adminMessage = `
-🔔 *New Subscription Request*
+🔔 *Новый запрос на подписку*
 
-Request ID: \`${requestId}\`
+ID запроса: \`${requestId}\`
 Telegram ID: ${telegramId}
-Plan: *${planName}*
-Price: *${formatPrice(price)}*
-Time: ${new Date().toLocaleString()}
+Тариф: *${planName}*
+Сумма: *${formatPrice(price)}*
+Время: ${new Date().toLocaleString("ru-RU")}
 
 /approve_${requestId} | /reject_${requestId}
     `;
@@ -281,14 +302,14 @@ export async function notifyUserApproved(
 ): Promise<void> {
   try {
     const message = `
-✅ *Subscription Approved!*
+✅ *Подписка активирована!*
 
-Plan: *${planName}*
-Expires: *${expiresAt.toLocaleDateString()}*
+Тариф: *${planName}*
+Действует до: *${expiresAt.toLocaleDateString("ru-RU")}*
 
-You can now access all premium features in the RTrader app!
+Вы получили доступ ко всем премиум-функциям приложения RTrader!
 
-🚀 Open the app to get started.
+🚀 Откройте приложение, чтобы начать.
     `;
 
     await bot.sendMessage(chatId, message, {
@@ -308,13 +329,13 @@ export async function notifyUserRejected(
 ): Promise<void> {
   try {
     const message = `
-❌ *Subscription Request Rejected*
+❌ *Запрос на подписку отклонён*
 
-Reason: ${reason}
+Причина: ${reason}
 
-Please contact support for more information or try again with a different payment method.
+Пожалуйста, свяжитесь со службой поддержки для получения дополнительной информации или повторите попытку с другим способом оплаты.
 
-📞 Support: @rtrader_support
+📞 Поддержка: @rtrader_support
     `;
 
     await bot.sendMessage(chatId, message, {
@@ -335,11 +356,11 @@ export async function notifyUserExpiryWarning(
 ): Promise<void> {
   try {
     const message = `
-⏰ *Subscription Expiring Soon*
+⏰ *Подписка истекает скоро*
 
-Your subscription expires in *${daysRemaining} days*.
+Ваша подписка истекает через *${daysRemaining} дней*.
 
-Renew now to continue enjoying premium features!
+Продлите подписку, чтобы продолжить пользоваться премиум-функциями!
 
 /subscribe
     `;
@@ -348,7 +369,7 @@ Renew now to continue enjoying premium features!
       parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [
-          [{ text: "🔄 Renew Subscription", callback_data: "show_plans" }],
+          [{ text: "🔄 Продлить подписку", callback_data: "show_plans" }],
         ],
       },
     });

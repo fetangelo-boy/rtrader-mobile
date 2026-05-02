@@ -317,6 +317,14 @@
 4. Prepare Android release build
 
 
+## Backend Stability & Auth Issues (2026-05-02)
+- [ ] Fix Telegram bot polling stability (causes server crashes)
+- [ ] Implement proper email-based authentication
+- [ ] Integrate Telegram with registration flow
+- [ ] Fix JSON parse error on login
+- [ ] Implement webhook instead of polling for bot
+- [ ] Add error recovery and logging
+
 ## Release-Readiness Audit (2026-05-01) - COMPLETE ✅
 - [x] Check app version (FIXED: aligned to 1.0.0)
 - [x] Check Supabase integration (verified: vfxezndvkaxlimthkeyx)
@@ -395,3 +403,15 @@
 - [ ] Test APK on real device
 - [ ] Provide APK link to user for testing
 - [ ] Prepare for Google Play Store submission
+
+## Session: Bot & Registration Flow Fix (2026-05-02)
+- [x] Rewrite telegram-bot.ts with correct tariffs (1700/4000/10300/20000 ₽)
+- [x] Add T-Bank payment details (5536 9138 8189 0954, Зерянский Роман Олегович)
+- [x] Re-enable bot initialization in server/_core/index.ts
+- [x] Update ADMIN_IDS to include numeric ID 716116024
+- [x] Fix bot username reference in subscription-expired.tsx (@rtrader_mobapp_bot)
+- [x] Remove old duplicate bot import from server/_core/index.ts
+- [ ] Save checkpoint with all bot fixes
+- [ ] Test bot /start command in Telegram
+- [ ] Test full flow: tariff selection → payment details → receipt → admin approve → credentials
+

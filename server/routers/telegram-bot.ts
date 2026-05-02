@@ -1,362 +1,645 @@
 /**
- * Telegram Bot Long Polling Handler
- * 
- * Handles updates from @rtrader_mobapp_bot using Long Polling
- * - No webhook required (no public URL needed)
- * - /start command: initiates subscription flow
- * - Payment confirmation: generates login credentials and deep link
- * - Subscription management
+ * Telegram Bot Long Polling Handler for @rtrader_mobapp_bot
+ *
+ * Flow:
+ * 1. /start → welcome + main menu
+ * 2. User selects tariff → payment details shown (T-Bank card)
+ * 3. User sends receipt photo → admin notified via Telegram
+ * 4. Admin approves via /approve command → system creates account
+ * 5. Bot sends credentials + deep link to user
  */
 
-import { getDb } from "../db";
-import { generateAccessToken } from "../_core/jwt";
-import { authUsers } from "../../drizzle/schema_auth";
-import { eq } from "drizzle-orm";
-
-const BOT_TOKEN = process.env.BOT_TOKEN;
+const BOT_TOKEN = process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
 const BOT_API_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
+const SERVER_URL = "http://localhost:3000";
+
+// Admin Telegram IDs who can approve subscriptions (usernames or numeric IDs)
+const ADMIN_TELEGRAM_IDS = (process.env.ADMIN_IDS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+// Tariff plans
+const PLANS = [
+  { id: "week", name: "1 неделя", price: 1700, days: 7, label: "1 700 ₽/нед" },
+  { id: "month", name: "1 месяц", price: 4000, days: 30, label: "4 000 ₽/мес" },
+  { id: "quarter", name: "3 месяца", price: 10300, days: 90, label: "10 300 ₽ (скидка 14%)" },
+  { id: "halfyear", name: "Полгода", price: 20000, days: 180, label: "20 000 ₽ (скидка 17%)" },
+];
+
+// Payment details
+const PAYMENT = {
+  bank: "Т-Банк",
+  card: "5536 9138 8189 0954",
+  expiry: "09/28",
+  name: "Зерянский Роман Олегович",
+};
+
+// In-memory state: pending receipt submissions
+// key = telegramId, value = selected plan
+const pendingPayments = new Map<number, { planId: string; planName: string; price: number; days: number }>();
 
 interface TelegramUpdate {
   update_id: number;
   message?: {
     message_id: number;
-    from: {
-      id: number;
-      is_bot: boolean;
-      first_name: string;
-      username?: string;
-    };
-    chat: {
-      id: number;
-      type: string;
-    };
+    from: { id: number; is_bot: boolean; first_name: string; last_name?: string; username?: string };
+    chat: { id: number; type: string };
     text?: string;
-    document?: {
-      file_id: string;
-    };
+    photo?: Array<{ file_id: string; file_size: number; width: number; height: number }>;
+    document?: { file_id: string; file_name?: string; mime_type?: string };
   };
   callback_query?: {
     id: string;
-    from: {
-      id: number;
-      first_name: string;
-      username?: string;
-    };
+    from: { id: number; first_name: string; last_name?: string; username?: string };
+    message?: { chat: { id: number }; message_id: number };
     data: string;
   };
 }
 
-/**
- * Send message via Telegram API
- */
-async function sendTelegramMessage(chatId: number, text: string, options?: any) {
+// ─── Telegram API helpers ────────────────────────────────────────────────────
+
+async function sendMessage(chatId: number, text: string, options?: Record<string, unknown>) {
   try {
-    const response = await fetch(`${BOT_API_URL}/sendMessage`, {
+    const res = await fetch(`${BOT_API_URL}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        parse_mode: "HTML",
-        ...options,
-      }),
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML", ...options }),
     });
-
-    if (!response.ok) {
-      console.error(`[Bot] Failed to send message: ${response.statusText}`);
-      return false;
+    if (!res.ok) {
+      const err = await res.text();
+      console.error(`[Bot] sendMessage failed (${res.status}): ${err}`);
     }
-
-    return true;
-  } catch (error) {
-    console.error("[Bot] Error sending message:", error);
+    return res.ok;
+  } catch (e) {
+    console.error("[Bot] sendMessage error:", e);
     return false;
   }
 }
 
-/**
- * Send inline keyboard with buttons
- */
-async function sendKeyboard(
-  chatId: number,
-  text: string,
-  buttons: Array<Array<{ text: string; callback_data: string }>>
-) {
-  return sendTelegramMessage(chatId, text, {
-    reply_markup: {
-      inline_keyboard: buttons,
-    },
-  });
+async function answerCallbackQuery(id: string, text?: string) {
+  try {
+    await fetch(`${BOT_API_URL}/answerCallbackQuery`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ callback_query_id: id, text }),
+    });
+  } catch (e) {
+    console.error("[Bot] answerCallbackQuery error:", e);
+  }
 }
 
-/**
- * Handle /start command
- */
-async function handleStartCommand(update: TelegramUpdate) {
-  const message = update.message!;
-  const telegramId = message.from.id;
-  const firstName = message.from.first_name;
-  const chatId = message.chat.id;
+// ─── Handlers ────────────────────────────────────────────────────────────────
 
-  console.log(`[Bot] /start from ${firstName} (${telegramId})`);
+async function showMainMenu(chatId: number, firstName: string) {
+  await sendMessage(
+    chatId,
+    `🏠 <b>Главное меню</b>\n\nПривет, ${firstName}! Чем могу помочь?`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "💳 Оформить подписку", callback_data: "subscribe" }],
+          [{ text: "📊 Проверить статус", callback_data: "status" }],
+          [{ text: "❓ Помощь", callback_data: "help" }],
+        ],
+      },
+    }
+  );
+}
+
+async function handleStart(update: TelegramUpdate) {
+  const msg = update.message!;
+  const chatId = msg.chat.id;
+  const firstName = msg.from.first_name;
+  const startParam = msg.text?.split(" ")[1];
+
+  console.log(`[Bot] /start from ${firstName} (${msg.from.id})`);
+
+  if (startParam === "renew") {
+    await showTariffMenu(chatId);
+    return;
+  }
+
+  await sendMessage(
+    chatId,
+    `👋 <b>Добро пожаловать в RTrader Club, ${firstName}!</b>\n\n` +
+      `Это закрытое сообщество трейдеров и инвесторов.\n\n` +
+      `<b>Что вас ждёт:</b>\n` +
+      `• Реал-тайм чаты с сообществом\n` +
+      `• Торговые идеи и аналитика\n` +
+      `• Обсуждение стратегий\n` +
+      `• Уведомления о сигналах\n\n` +
+      `Для получения доступа оформите подписку.`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "💳 Оформить подписку", callback_data: "subscribe" }],
+          [{ text: "📊 Проверить статус", callback_data: "status" }],
+          [{ text: "❓ Помощь", callback_data: "help" }],
+        ],
+      },
+    }
+  );
+}
+
+async function showTariffMenu(chatId: number) {
+  await sendMessage(
+    chatId,
+    `📋 <b>Подписка RTrading Club</b>\n\nВыберите тариф:`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          ...PLANS.map((p) => [{ text: `${p.name} — ${p.label}`, callback_data: `plan_${p.id}` }]),
+          [{ text: "🏠 Главное меню", callback_data: "home" }],
+        ],
+      },
+    }
+  );
+}
+
+async function handlePlanSelected(chatId: number, telegramId: number, planId: string) {
+  const plan = PLANS.find((p) => p.id === planId);
+  if (!plan) {
+    await sendMessage(chatId, "❌ Тариф не найден. Попробуйте снова.");
+    return;
+  }
+
+  pendingPayments.set(telegramId, {
+    planId: plan.id,
+    planName: plan.name,
+    price: plan.price,
+    days: plan.days,
+  });
+
+  await sendMessage(
+    chatId,
+    `✅ <b>Вы выбрали: ${plan.name}</b>\n` +
+      `💰 Стоимость: <b>${plan.price.toLocaleString("ru-RU")} ₽</b>\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `<b>Реквизиты для оплаты:</b>\n\n` +
+      `🏦 Банк: <b>${PAYMENT.bank}</b>\n` +
+      `💳 Карта: <code>${PAYMENT.card}</code>\n` +
+      `📅 Срок: <b>${PAYMENT.expiry}</b>\n` +
+      `👤 Получатель: <b>${PAYMENT.name}</b>\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `<b>Как оплатить:</b>\n` +
+      `1. Переведите <b>${plan.price.toLocaleString("ru-RU")} ₽</b> на карту выше\n` +
+      `2. Сделайте скриншот или фото чека\n` +
+      `3. Отправьте чек прямо сюда в этот чат\n\n` +
+      `⏳ После проверки вы получите доступ в течение нескольких минут.`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🏠 Главное меню", callback_data: "home" }],
+        ],
+      },
+    }
+  );
+}
+
+async function handleReceiptReceived(update: TelegramUpdate) {
+  const msg = update.message!;
+  const chatId = msg.chat.id;
+  const telegramId = msg.from.id;
+  const firstName = msg.from.first_name;
+  const username = msg.from.username;
+
+  const pending = pendingPayments.get(telegramId);
+  if (!pending) {
+    await sendMessage(
+      chatId,
+      `❓ Сначала выберите тариф.\n\nНажмите /start для начала.`
+    );
+    return;
+  }
+
+  // Confirm to user
+  await sendMessage(
+    chatId,
+    `✅ <b>Чек получен!</b>\n\n` +
+      `Ваша заявка на тариф <b>${pending.planName}</b> (${pending.price.toLocaleString("ru-RU")} ₽) отправлена на проверку.\n\n` +
+      `⏳ Обычно проверка занимает несколько минут.\n` +
+      `После одобрения вы получите данные для входа в приложение.`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🏠 Главное меню", callback_data: "home" }],
+        ],
+      },
+    }
+  );
+
+  // Notify admins
+  const adminText =
+    `🔔 <b>Новая заявка на подписку!</b>\n\n` +
+    `👤 Пользователь: <b>${firstName}</b>${username ? ` (@${username})` : ""}\n` +
+    `🆔 Telegram ID: <code>${telegramId}</code>\n` +
+    `📋 Тариф: <b>${pending.planName}</b>\n` +
+    `💰 Сумма: <b>${pending.price.toLocaleString("ru-RU")} ₽</b>\n` +
+    `📅 Дней: <b>${pending.days}</b>\n\n` +
+    `Для одобрения отправьте:\n` +
+    `<code>/approve ${telegramId} ${firstName} ${pending.days}</code>`;
+
+  for (const adminId of ADMIN_TELEGRAM_IDS) {
+    const adminChatId = parseInt(adminId, 10);
+    if (!isNaN(adminChatId)) {
+      await sendMessage(adminChatId, adminText);
+      // Forward receipt to admin
+      try {
+        await fetch(`${BOT_API_URL}/forwardMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: adminChatId,
+            from_chat_id: chatId,
+            message_id: msg.message_id,
+          }),
+        });
+      } catch (e) {
+        console.error("[Bot] Failed to forward receipt:", e);
+      }
+    }
+  }
+
+  console.log(`[Bot] Receipt received from ${firstName} (${telegramId}) for plan ${pending.planName}`);
+}
+
+async function handleApproveCommand(update: TelegramUpdate) {
+  const msg = update.message!;
+  const chatId = msg.chat.id;
+  const senderUsername = msg.from.username || String(msg.from.id);
+  const senderId = String(msg.from.id);
+
+  const isAdmin =
+    ADMIN_TELEGRAM_IDS.includes(senderUsername) ||
+    ADMIN_TELEGRAM_IDS.includes(senderId);
+
+  if (!isAdmin) {
+    await sendMessage(chatId, "❌ У вас нет прав для этой команды.");
+    return;
+  }
+
+  // /approve <telegram_id> <name> <days>
+  const parts = msg.text!.trim().split(/\s+/);
+  if (parts.length < 4) {
+    await sendMessage(
+      chatId,
+      "❌ Формат: <code>/approve &lt;telegram_id&gt; &lt;имя&gt; &lt;дней&gt;</code>\n" +
+        "Пример: <code>/approve 123456789 Иван 30</code>"
+    );
+    return;
+  }
+
+  const targetTelegramId = parseInt(parts[1], 10);
+  const targetName = parts[2];
+  const days = parseInt(parts[3], 10);
+
+  if (isNaN(targetTelegramId) || isNaN(days)) {
+    await sendMessage(chatId, "❌ Неверный формат telegram_id или дней.");
+    return;
+  }
+
+  await sendMessage(chatId, `⏳ Создаю аккаунт для пользователя ${targetTelegramId}...`);
 
   try {
-    // Check if user already has account in database
-    const db = await getDb();
-    if (!db) {
-      await sendTelegramMessage(
-        chatId,
-        `❌ <b>Ошибка подключения к БД</b>\n\n` +
-          `Пожалуйста, попробуйте позже.`
-      );
+    const response = await fetch(`${SERVER_URL}/api/admin/create-subscriber`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Key": ADMIN_API_KEY || "",
+      },
+      body: JSON.stringify({
+        telegram_id: targetTelegramId,
+        telegram_name: targetName,
+        days,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      if (data.error?.includes("already exists")) {
+        await sendMessage(
+          chatId,
+          `⚠️ Пользователь уже существует.\n` +
+            `Для продления используйте:\n` +
+            `<code>/renew ${targetTelegramId} ${days}</code>`
+        );
+      } else {
+        await sendMessage(chatId, `❌ Ошибка: ${data.error || "неизвестная ошибка"}`);
+      }
       return;
     }
 
-    // Query users table for existing account
-    // Note: authUsers table doesn't have telegramId field in current schema
-    // For now, we'll skip user lookup and show welcome message to all
-    // TODO: Add telegramId field to authUsers schema in drizzle/schema_auth.ts
-    
-    const existingUser = null;
+    const { email, password } = data;
 
-    // Show welcome and subscription options
-    console.log(`[Bot] User /start: ${firstName} (${telegramId})`);
-    await sendTelegramMessage(
+    // Notify admin
+    await sendMessage(
       chatId,
-      `👋 <b>Добро пожаловать в RTrader!</b>\n\n` +
-        `Это приложение для трейдеров и инвесторов.\n\n` +
-        `<b>Возможности:</b>\n` +
-        `• Реал-тайм чаты с сообществом\n` +
-        `• Обсуждение стратегий\n` +
-        `• Управление подписками\n` +
-        `• Уведомления о сообщениях\n\n` +
-        `<b>Подписка:</b>\n` +
-        `Стоимость и условия подписки обсудите с администратором: @rhodes4ever`
+      `✅ <b>Аккаунт создан!</b>\n\n` +
+        `👤 Пользователь: ${targetName}\n` +
+        `📧 Email: <code>${email}</code>\n` +
+        `🔑 Пароль: <code>${password}</code>\n` +
+        `📅 Подписка: ${days} дней`
     );
 
-    await sendKeyboard(
-      chatId,
-      `Выберите опцию:`,
-      [
-        [
-          {
-            text: "💳 Оплатить подписку",
-            callback_data: "subscribe_premium",
-          },
-        ],
-        [
-          {
-            text: "❓ Помощь",
-            callback_data: "help",
-          },
-        ],
-      ]
+    // Send credentials to user
+    await sendMessage(
+      targetTelegramId,
+      `🎉 <b>Доступ одобрен!</b>\n\n` +
+        `Ваша подписка <b>активирована</b> на ${days} дней.\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `<b>Данные для входа:</b>\n\n` +
+        `📧 Email: <code>${email}</code>\n` +
+        `🔑 Пароль: <code>${password}</code>\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `<b>Как войти:</b>\n` +
+        `1. Откройте приложение RTrader\n` +
+        `2. Введите email и пароль\n\n` +
+        `Добро пожаловать в RTrading Club! 🚀`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🏠 Главное меню", callback_data: "home" }],
+          ],
+        },
+      }
     );
-  } catch (error) {
-    console.error("[Bot] Error in handleStartCommand:", error);
-    await sendTelegramMessage(
-      chatId,
-      `❌ <b>Ошибка</b>\n\n` +
-        `Что-то пошло не так. Пожалуйста, попробуйте позже.`
-    );
+
+    pendingPayments.delete(targetTelegramId);
+    console.log(`[Bot] Approved subscription for ${targetName} (${targetTelegramId}), ${days} days`);
+  } catch (e) {
+    console.error("[Bot] handleApproveCommand error:", e);
+    await sendMessage(chatId, "❌ Ошибка при создании аккаунта. Проверьте логи сервера.");
   }
 }
 
-/**
- * Handle callback queries (button presses)
- */
-async function handleCallbackQuery(update: TelegramUpdate) {
-  const query = update.callback_query!;
-  const telegramId = query.from.id;
-  const firstName = query.from.first_name;
-  const chatId = telegramId;
-  const data = query.data;
+async function handleRenewCommand(update: TelegramUpdate) {
+  const msg = update.message!;
+  const chatId = msg.chat.id;
+  const senderUsername = msg.from.username || String(msg.from.id);
+  const senderId = String(msg.from.id);
 
-  console.log(`[Bot] Callback: ${data} from ${firstName} (${telegramId})`);
+  const isAdmin =
+    ADMIN_TELEGRAM_IDS.includes(senderUsername) ||
+    ADMIN_TELEGRAM_IDS.includes(senderId);
+
+  if (!isAdmin) {
+    await sendMessage(chatId, "❌ У вас нет прав для этой команды.");
+    return;
+  }
+
+  // /renew <telegram_id> <days>
+  const parts = msg.text!.trim().split(/\s+/);
+  if (parts.length < 3) {
+    await sendMessage(
+      chatId,
+      "❌ Формат: <code>/renew &lt;telegram_id&gt; &lt;дней&gt;</code>\n" +
+        "Пример: <code>/renew 123456789 30</code>"
+    );
+    return;
+  }
+
+  const targetTelegramId = parts[1];
+  const days = parseInt(parts[2], 10);
+
+  if (isNaN(days)) {
+    await sendMessage(chatId, "❌ Неверный формат дней.");
+    return;
+  }
 
   try {
-    if (data === "subscribe_premium") {
-      await sendTelegramMessage(
-        chatId,
-        `💳 <b>Оплата подписки</b>\n\n` +
-          `Стоимость: 99 RUB/месяц\n\n` +
-          `Для оплаты свяжитесь с администратором:\n` +
-          `<a href="https://t.me/rhodes4ever">@rhodes4ever</a>\n\n` +
-          `После оплаты администратор активирует вашу подписку.`
-      );
-    } else if (data === "help") {
-      await sendTelegramMessage(
-        chatId,
-        `❓ <b>Справка</b>\n\n` +
-          `<b>Как начать:</b>\n` +
-          `1. Оплатите подписку (99 RUB/месяц)\n` +
-          `2. Администратор активирует доступ\n` +
-          `3. Вернитесь в приложение и нажмите "Войти"\n\n` +
-          `<b>Поддержка:</b>\n` +
-          `<a href="https://t.me/rhodes4ever">@rhodes4ever</a>`
-      );
+    const response = await fetch(`${SERVER_URL}/api/admin/renew-subscription`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Key": ADMIN_API_KEY || "",
+      },
+      body: JSON.stringify({ telegram_id: targetTelegramId, days }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      await sendMessage(chatId, `❌ Ошибка: ${data.error || "неизвестная ошибка"}`);
+      return;
     }
 
-    // Answer callback query to remove loading state
-    try {
-      await fetch(`${BOT_API_URL}/answerCallbackQuery`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          callback_query_id: query.id,
-        }),
-      });
-    } catch (error) {
-      console.error("[Bot] Error answering callback query:", error);
+    const expiryDate = new Date(data.expires_at).toLocaleDateString("ru-RU");
+    await sendMessage(
+      chatId,
+      `✅ Подписка продлена на ${days} дней.\n` +
+        `Новая дата окончания: <b>${expiryDate}</b>`
+    );
+
+    const targetId = parseInt(targetTelegramId, 10);
+    if (!isNaN(targetId)) {
+      await sendMessage(
+        targetId,
+        `🔄 <b>Подписка продлена!</b>\n\n` +
+          `Ваша подписка продлена на <b>${days} дней</b>.\n` +
+          `Новая дата окончания: <b>${expiryDate}</b>\n\n` +
+          `Добро пожаловать обратно! 🚀`
+      );
     }
-  } catch (error) {
-    console.error("[Bot] Error in handleCallbackQuery:", error);
+  } catch (e) {
+    console.error("[Bot] handleRenewCommand error:", e);
+    await sendMessage(chatId, "❌ Ошибка при продлении подписки.");
   }
 }
 
-/**
- * Process incoming update
- */
+async function handleStatus(chatId: number) {
+  await sendMessage(
+    chatId,
+    `📊 <b>Статус подписки</b>\n\n` +
+      `Для проверки статуса подписки откройте приложение RTrader и перейдите в раздел "Аккаунт".\n\n` +
+      `Если у вас нет доступа — оформите подписку.`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "💳 Оформить подписку", callback_data: "subscribe" }],
+          [{ text: "🏠 Главное меню", callback_data: "home" }],
+        ],
+      },
+    }
+  );
+}
+
+async function handleHelp(chatId: number) {
+  await sendMessage(
+    chatId,
+    `❓ <b>Помощь</b>\n\n` +
+      `<b>Как получить доступ:</b>\n` +
+      `1. Выберите тариф\n` +
+      `2. Оплатите на карту Т-Банк\n` +
+      `3. Отправьте скриншот чека сюда\n` +
+      `4. Получите данные для входа\n\n` +
+      `<b>Доступные команды:</b>\n` +
+      `/start — главное меню\n` +
+      `/subscribe — выбрать тариф\n` +
+      `/status — статус подписки\n` +
+      `/help — эта справка\n\n` +
+      `<b>Поддержка:</b>\n` +
+      `<a href="https://t.me/rhodes4ever">@rhodes4ever</a>`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "💳 Оформить подписку", callback_data: "subscribe" }],
+          [{ text: "🏠 Главное меню", callback_data: "home" }],
+        ],
+      },
+    }
+  );
+}
+
+// ─── Update processor ────────────────────────────────────────────────────────
+
 async function processUpdate(update: TelegramUpdate) {
   try {
-    // Handle text messages
+    // Text messages
     if (update.message?.text) {
       const text = update.message.text;
+      const chatId = update.message.chat.id;
+      const firstName = update.message.from.first_name;
 
-      if (text === "/start" || text.startsWith("/start ")) {
-        await handleStartCommand(update);
+      if (text.startsWith("/start")) {
+        await handleStart(update);
+      } else if (text === "/subscribe") {
+        await showTariffMenu(chatId);
+      } else if (text === "/status") {
+        await handleStatus(chatId);
+      } else if (text === "/help") {
+        await handleHelp(chatId);
+      } else if (text.startsWith("/approve")) {
+        await handleApproveCommand(update);
+      } else if (text.startsWith("/renew")) {
+        await handleRenewCommand(update);
       } else {
-        // Echo unknown commands
-        await sendTelegramMessage(
-          update.message.chat.id,
-          `❓ Неизвестная команда: <code>${text}</code>\n\n` +
-            `Используйте /start для начала.`
-        );
+        await sendMessage(chatId, `❓ Неизвестная команда.\n\nИспользуйте /start для начала.`);
+      }
+      return;
+    }
+
+    // Photo or document (receipt)
+    if (update.message?.photo || update.message?.document) {
+      await handleReceiptReceived(update);
+      return;
+    }
+
+    // Callback queries (button presses)
+    if (update.callback_query) {
+      const query = update.callback_query;
+      const chatId = query.from.id;
+      const firstName = query.from.first_name;
+      const data = query.data;
+
+      await answerCallbackQuery(query.id);
+
+      if (data === "home") {
+        await showMainMenu(chatId, firstName);
+      } else if (data === "subscribe") {
+        await showTariffMenu(chatId);
+      } else if (data === "status") {
+        await handleStatus(chatId);
+      } else if (data === "help") {
+        await handleHelp(chatId);
+      } else if (data.startsWith("plan_")) {
+        const planId = data.replace("plan_", "");
+        await handlePlanSelected(chatId, query.from.id, planId);
       }
     }
-
-    // Handle button clicks
-    if (update.callback_query) {
-      await handleCallbackQuery(update);
-    }
-  } catch (error) {
-    console.error("[Bot] Error processing update:", error);
+  } catch (e) {
+    console.error("[Bot] processUpdate error:", e);
   }
 }
 
-/**
- * Long Polling loop
- */
+// ─── Long Polling ────────────────────────────────────────────────────────────
+
 let isPolling = false;
 let lastUpdateId = 0;
-let pollingPromise: Promise<void> | null = null;
 
 async function deleteWebhook() {
   try {
-    console.log("[Bot] Deleting webhook...");
-    const response = await fetch(`${BOT_API_URL}/deleteWebhook`, {
+    const res = await fetch(`${BOT_API_URL}/deleteWebhook`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ drop_pending_updates: true }),
     });
-    const data = await response.json();
+    const data = await res.json();
     if (data.ok) {
-      console.log("[Bot] ✅ Webhook deleted successfully");
+      console.log("[Bot] ✅ Webhook deleted");
     } else {
       console.error("[Bot] Failed to delete webhook:", data.description);
     }
-  } catch (error) {
-    console.error("[Bot] Error deleting webhook:", error);
+  } catch (e) {
+    console.error("[Bot] deleteWebhook error:", e);
   }
 }
 
 async function startPolling() {
-  if (isPolling) {
-    console.log("[Bot] Polling already running");
-    return;
-  }
-
+  if (isPolling) return;
   if (!BOT_TOKEN) {
-    console.error("[Bot] BOT_TOKEN not configured");
+    console.error("[Bot] BOT_TOKEN not set, skipping");
     return;
   }
 
-  // Delete webhook first
   await deleteWebhook();
-  
   isPolling = true;
-  console.log("[Bot] ✅ Starting Long Polling for @rtrader_mobapp_bot...");
+  console.log("[Bot] ✅ Long Polling started for @rtrader_mobapp_bot");
 
   while (isPolling) {
     try {
-      const response = await fetch(`${BOT_API_URL}/getUpdates`, {
+      const res = await fetch(`${BOT_API_URL}/getUpdates`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           offset: lastUpdateId + 1,
-          timeout: 30,
+          timeout: 25,
           allowed_updates: ["message", "callback_query"],
         }),
+        signal: AbortSignal.timeout(35000),
       });
 
-      if (!response.ok) {
-        const text = await response.text();
-        console.error(`[Bot] Failed to get updates: ${response.statusText}`, text);
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+      if (!res.ok) {
+        console.error(`[Bot] getUpdates failed: ${res.status}`);
+        await new Promise((r) => setTimeout(r, 5000));
         continue;
       }
 
-      const data = await response.json();
-
+      const data = await res.json();
       if (!data.ok) {
-        console.error("[Bot] API error:", data.description || data);
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        console.error("[Bot] API error:", data.description);
+        await new Promise((r) => setTimeout(r, 5000));
         continue;
       }
 
-      // Process each update
-      if (data.result && data.result.length > 0) {
-        console.log(`[Bot] Processing ${data.result.length} update(s)`);
+      if (data.result?.length > 0) {
         for (const update of data.result) {
           lastUpdateId = Math.max(lastUpdateId, update.update_id);
-          await processUpdate(update);
+          processUpdate(update).catch((e) => console.error("[Bot] Unhandled update error:", e));
         }
       }
-    } catch (error) {
-      console.error("[Bot] Polling error:", error);
-      await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5s before retry
+    } catch (e: any) {
+      if (e?.name === "TimeoutError" || e?.name === "AbortError") {
+        continue; // Normal long-poll timeout
+      }
+      console.error("[Bot] Polling error:", e);
+      await new Promise((r) => setTimeout(r, 5000));
     }
   }
 }
 
-/**
- * Stop polling
- */
-function stopPolling() {
-  isPolling = false;
-  console.log("[Bot] Polling stopped");
-}
-
-/**
- * Initialize bot polling
- */
 export function initializeTelegramBot() {
   if (!BOT_TOKEN) {
     console.warn("[Bot] BOT_TOKEN not configured, skipping bot initialization");
     return;
   }
-
-  console.log("[Bot] 🤖 Initializing Telegram bot with Long Polling");
-  console.log(`[Bot] BOT_TOKEN: ${BOT_TOKEN ? "✅ SET" : "❌ NOT SET"}`);
-  
-  pollingPromise = startPolling().catch((error) => {
-    console.error("[Bot] ❌ Failed to start polling:", error);
-  });
+  console.log("[Bot] 🤖 Initializing @rtrader_mobapp_bot...");
+  startPolling().catch((e) => console.error("[Bot] Fatal polling error:", e));
 }
 
-/**
- * Cleanup on shutdown
- */
 export function shutdownTelegramBot() {
-  stopPolling();
+  isPolling = false;
+  console.log("[Bot] Polling stopped");
 }

@@ -58,7 +58,7 @@ export function SubscriptionExpired({ expiresAt }: { expiresAt?: string }) {
 
         {/* Help text */}
         <Text style={[styles.helpText, { color: colors.muted }]}>
-          Напишите боту @rtrader_bot для продления
+          Напишите боту @rtrader_mobapp_bot для продления
         </Text>
       </View>
     </ScreenContainer>

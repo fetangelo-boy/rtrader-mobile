@@ -86,13 +86,9 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`[api] server listening on port ${port}`);
-    console.log(`[api] Initializing Telegram bot...`);
     
-    // Initialize bot AFTER server is listening
-    setTimeout(() => {
-      console.log(`[api] Starting Telegram bot polling...`);
-      initializeTelegramBot();
-    }, 1000);
+    // Initialize Telegram bot with long polling
+    initializeTelegramBot();
   });
   
   // Cleanup on shutdown
