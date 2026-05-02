@@ -320,12 +320,76 @@ async function handleApproveCommand(update: TelegramUpdate) {
 
     if (!response.ok || !data.success) {
       if (data.error?.includes("already exists")) {
-        await sendMessage(
-          chatId,
-          `⚠️ Пользователь уже существует.\n` +
-            `Для продления используйте:\n` +
-            `<code>/renew ${targetTelegramId} ${days}</code>`
-        );
+        // User exists — auto-renew subscription and resend credentials
+        await sendMessage(chatId, `⏳ Пользователь уже существует. Продлеваю подписку и сбрасываю пароль...`);
+        try {
+          // Step 1: Renew subscription
+          const renewResponse = await fetch(`${SERVER_URL}/api/admin/renew-subscription`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Admin-Key": ADMIN_API_KEY || "" },
+            body: JSON.stringify({ telegram_id: String(targetTelegramId), days }),
+          });
+          const renewData = await renewResponse.json();
+          if (!renewResponse.ok || !renewData.success) {
+            await sendMessage(chatId, `❌ Ошибка продления: ${renewData.error || "неизвестная ошибка"}`);
+            return;
+          }
+          // Step 2: Reset password to get new credentials
+          const resetResponse = await fetch(`${SERVER_URL}/api/admin/reset-password`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Admin-Key": ADMIN_API_KEY || "" },
+            body: JSON.stringify({ telegram_id: String(targetTelegramId) }),
+          });
+          const resetData = await resetResponse.json();
+          if (!resetResponse.ok || !resetData.success) {
+            await sendMessage(chatId, `❌ Ошибка сброса пароля: ${resetData.error || "неизвестная ошибка"}`);
+            return;
+          }
+          const renewedEmail = resetData.email;
+          const newPassword = resetData.password;
+          const rawExpiry = renewData.subscription?.expires_at;
+          const expiryDate = rawExpiry
+            ? new Date(rawExpiry).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" })
+            : "неизвестно";
+          // Notify admin
+          await sendMessage(
+            chatId,
+            `✅ <b>Подписка продлена!</b>\n\n` +
+              `👤 Пользователь: ${targetName}\n` +
+              `📧 Email: <code>${renewedEmail}</code>\n` +
+              `🔑 Новый пароль: <code>${newPassword}</code>\n` +
+              `📅 Подписка до: ${expiryDate}`
+          );
+          // Build deep link and send credentials to user
+          const deepLinkRenew = `rtrader://login?email=${encodeURIComponent(renewedEmail)}&password=${encodeURIComponent(newPassword)}`;
+          await sendMessage(
+            targetTelegramId,
+            `🎉 <b>Доступ одобрен!</b>\n\n` +
+              `Ваша подписка <b>активирована</b> на ${days} дней.\n` +
+              `Действует до: <b>${expiryDate}</b>\n\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━\n` +
+              `<b>Данные для входа:</b>\n\n` +
+              `📧 Email: <code>${renewedEmail}</code>\n` +
+              `🔑 Пароль: <code>${newPassword}</code>\n\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━\n` +
+              `<b>Как войти:</b>\n` +
+              `1. Нажмите кнопку «Войти в RTrader» ниже — вход автоматически\n` +
+              `2. Или откройте приложение вручную и введите данные выше\n\n` +
+              `Добро пожаловать в RTrading Club! 🚀`,
+            {
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "🚀 Войти в RTrader", url: deepLinkRenew }],
+                  [{ text: "🏠 Главное меню", callback_data: "home" }],
+                ],
+              },
+            }
+          );
+          pendingPayments.delete(targetTelegramId);
+        } catch (renewErr) {
+          console.error("[Bot] Auto-renew error:", renewErr);
+          await sendMessage(chatId, "❌ Ошибка при автопродлении. Попробуйте /renew вручную.");
+        }
       } else {
         await sendMessage(chatId, `❌ Ошибка: ${data.error || "неизвестная ошибка"}`);
       }
