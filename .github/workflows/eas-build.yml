@@ -50,8 +50,6 @@ jobs:
 
 
       - name: Build with EAS
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           eas build \
             --platform ${{ github.event.inputs.platform }} \
