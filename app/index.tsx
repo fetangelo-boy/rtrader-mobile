@@ -3,8 +3,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, View, Platform } from "react-native";
 import { useColors } from "@/hooks/use-colors";
 import * as SecureStore from "expo-secure-store";
-
-const JWT_ACCESS_TOKEN_KEY = "jwt_access_token";
+import { SESSION_TOKEN_KEY } from "@/constants/oauth";
 
 /**
  * Root route handler
@@ -18,21 +17,21 @@ export default function RootIndex() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log("[Auth Check] Checking JWT token...");
+        console.log("[Auth Check] Checking session token...");
         
         let token: string | null = null;
         
         if (Platform.OS !== 'web') {
           // Native: use SecureStore
-          token = await SecureStore.getItemAsync(JWT_ACCESS_TOKEN_KEY);
+          token = await SecureStore.getItemAsync(SESSION_TOKEN_KEY);
         } else {
           // Web: use localStorage
           token = typeof window !== 'undefined' 
-            ? localStorage.getItem(JWT_ACCESS_TOKEN_KEY)
+            ? localStorage.getItem(SESSION_TOKEN_KEY)
             : null;
         }
         
-        console.log("[Auth Check] JWT token check result:", token ? "authenticated" : "not authenticated");
+        console.log("[Auth Check] Session token check result:", token ? "authenticated" : "not authenticated");
         setIsAuthenticated(!!token);
       } catch (error) {
         console.error("[Auth Check] Error:", error);

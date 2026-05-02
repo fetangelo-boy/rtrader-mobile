@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+import { SESSION_TOKEN_KEY, USER_INFO_KEY } from "@/constants/oauth";
 
 interface Subscription {
   id: string;
@@ -245,15 +246,15 @@ export default function AccountScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              // Clear JWT tokens from secure storage
+              // Clear session tokens from secure storage
               if (Platform.OS !== 'web') {
-                await SecureStore.deleteItemAsync("jwt_access_token");
-                await SecureStore.deleteItemAsync("jwt_refresh_token");
-                await SecureStore.deleteItemAsync("jwt_user_info");
+                await SecureStore.deleteItemAsync(SESSION_TOKEN_KEY).catch(() => {});
+                await SecureStore.deleteItemAsync("app_refresh_token").catch(() => {});
+                await SecureStore.deleteItemAsync(USER_INFO_KEY).catch(() => {});
               } else {
-                localStorage.removeItem("jwt_access_token");
-                localStorage.removeItem("jwt_refresh_token");
-                localStorage.removeItem("jwt_user_info");
+                localStorage.removeItem(SESSION_TOKEN_KEY);
+                localStorage.removeItem("app_refresh_token");
+                localStorage.removeItem(USER_INFO_KEY);
               }
             } catch (e) {
               console.error("Logout error:", e);
