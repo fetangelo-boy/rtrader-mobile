@@ -63,8 +63,7 @@ async function startServer() {
   registerAdminRoutes(app);
   registerRequestRoutes(app);
   
-  // Initialize Telegram bot with Long Polling
-  initializeTelegramBot();
+  // Bot will be initialized after server starts listening
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });
@@ -87,6 +86,13 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`[api] server listening on port ${port}`);
+    console.log(`[api] Initializing Telegram bot...`);
+    
+    // Initialize bot AFTER server is listening
+    setTimeout(() => {
+      console.log(`[api] Starting Telegram bot polling...`);
+      initializeTelegramBot();
+    }, 1000);
   });
   
   // Cleanup on shutdown

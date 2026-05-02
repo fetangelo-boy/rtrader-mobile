@@ -130,8 +130,8 @@ async function handleStartCommand(update: TelegramUpdate) {
         `• Обсуждение стратегий\n` +
         `• Управление подписками\n` +
         `• Уведомления о сообщениях\n\n` +
-        `<b>Стоимость подписки:</b> 99 RUB/месяц\n\n` +
-        `Для оплаты свяжитесь с администратором: @rhodes4ever`
+        `<b>Подписка:</b>\n` +
+        `Стоимость и условия подписки обсудите с администратором: @rhodes4ever`
     );
 
     await sendKeyboard(
@@ -251,6 +251,25 @@ let isPolling = false;
 let lastUpdateId = 0;
 let pollingPromise: Promise<void> | null = null;
 
+async function deleteWebhook() {
+  try {
+    console.log("[Bot] Deleting webhook...");
+    const response = await fetch(`${BOT_API_URL}/deleteWebhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ drop_pending_updates: true }),
+    });
+    const data = await response.json();
+    if (data.ok) {
+      console.log("[Bot] ✅ Webhook deleted successfully");
+    } else {
+      console.error("[Bot] Failed to delete webhook:", data.description);
+    }
+  } catch (error) {
+    console.error("[Bot] Error deleting webhook:", error);
+  }
+}
+
 async function startPolling() {
   if (isPolling) {
     console.log("[Bot] Polling already running");
@@ -262,8 +281,11 @@ async function startPolling() {
     return;
   }
 
+  // Delete webhook first
+  await deleteWebhook();
+  
   isPolling = true;
-  console.log("[Bot] Starting Long Polling for @rtrader_mobapp_bot...");
+  console.log("[Bot] ✅ Starting Long Polling for @rtrader_mobapp_bot...");
 
   while (isPolling) {
     try {
@@ -272,21 +294,22 @@ async function startPolling() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           offset: lastUpdateId + 1,
-          timeout: 30, // 30 second timeout
+          timeout: 30,
           allowed_updates: ["message", "callback_query"],
         }),
       });
 
       if (!response.ok) {
-        console.error(`[Bot] Failed to get updates: ${response.statusText}`);
-        await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5s before retry
+        const text = await response.text();
+        console.error(`[Bot] Failed to get updates: ${response.statusText}`, text);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
         continue;
       }
 
       const data = await response.json();
 
       if (!data.ok) {
-        console.error("[Bot] API error:", data.description);
+        console.error("[Bot] API error:", data.description || data);
         await new Promise((resolve) => setTimeout(resolve, 5000));
         continue;
       }
@@ -323,9 +346,11 @@ export function initializeTelegramBot() {
     return;
   }
 
-  console.log("[Bot] Initializing Telegram bot with Long Polling");
+  console.log("[Bot] 🤖 Initializing Telegram bot with Long Polling");
+  console.log(`[Bot] BOT_TOKEN: ${BOT_TOKEN ? "✅ SET" : "❌ NOT SET"}`);
+  
   pollingPromise = startPolling().catch((error) => {
-    console.error("[Bot] Failed to start polling:", error);
+    console.error("[Bot] ❌ Failed to start polling:", error);
   });
 }
 
