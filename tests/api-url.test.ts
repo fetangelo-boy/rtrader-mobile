@@ -6,8 +6,7 @@ describe("API Base URL Configuration", () => {
     console.log("EXPO_PUBLIC_API_BASE_URL:", apiUrl);
     
     expect(apiUrl).toBeTruthy();
-    expect(apiUrl).toContain("3000");
-    expect(apiUrl).toContain("manus.computer");
+    expect(apiUrl).toContain("railway.app");
   });
 
   it("should be a valid HTTPS URL", () => {

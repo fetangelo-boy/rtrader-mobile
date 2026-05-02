@@ -12,7 +12,8 @@
 const BOT_TOKEN = process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
 const BOT_API_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
-const SERVER_URL = "http://localhost:3000";
+const SERVER_URL = process.env.SERVER_URL ||
+  (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : "http://localhost:3000");
 
 // Admin Telegram IDs who can approve subscriptions (usernames or numeric IDs)
 const ADMIN_TELEGRAM_IDS = (process.env.ADMIN_IDS || "")
