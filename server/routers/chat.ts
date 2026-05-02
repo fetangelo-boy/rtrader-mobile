@@ -6,15 +6,37 @@ import { z } from "zod";
 
 /**
  * Resolve MySQL numeric user ID from Supabase UUID.
+ * Optionally syncs name/email from Supabase context so messages show real names.
  * All chat procedures MUST call this — chatParticipants.userId stores MySQL IDs, not Supabase UUIDs.
  */
-async function resolveMysqlUserId(db: any, supabaseUuid: string): Promise<string> {
+async function resolveMysqlUserId(
+  db: any,
+  supabaseUuid: string,
+  ctx?: { supabaseUser?: { id: string; email?: string; name?: string } | null }
+): Promise<string> {
   const [mysqlUser] = await db
-    .select({ id: users.id })
+    .select({ id: users.id, name: users.name, email: users.email })
     .from(users)
     .where(eq(users.openId, supabaseUuid))
     .limit(1);
   if (!mysqlUser) throw new Error("Please login (10001)");
+
+  // Sync name from context if current name is empty or generic
+  const ctxEmail = ctx?.supabaseUser?.email || "";
+  const ctxName = ctx?.supabaseUser?.name || "";
+  const needsNameUpdate = !mysqlUser.name || mysqlUser.name === "Пользователь";
+  if (needsNameUpdate && (ctxName || ctxEmail)) {
+    const resolvedName = ctxName || ctxEmail.split("@")[0];
+    try {
+      await db
+        .update(users)
+        .set({ name: resolvedName, email: ctxEmail || mysqlUser.email })
+        .where(eq(users.openId, supabaseUuid));
+    } catch (_) {
+      // Non-critical — ignore update errors
+    }
+  }
+
   return String(mysqlUser.id);
 }
 
@@ -30,7 +52,7 @@ export const chatRouter = router({
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
-    const userId = await resolveMysqlUserId(db, supabaseUuid);
+    const userId = await resolveMysqlUserId(db, supabaseUuid, ctx);
 
     // Get all chats where user is a participant
     const userChats = await db
@@ -81,7 +103,7 @@ export const chatRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const userId = await resolveMysqlUserId(db, supabaseUuid);
+      const userId = await resolveMysqlUserId(db, supabaseUuid, ctx);
 
       const chat = await db
         .select()
@@ -129,7 +151,7 @@ export const chatRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const userId = await resolveMysqlUserId(db, supabaseUuid);
+      const userId = await resolveMysqlUserId(db, supabaseUuid, ctx);
 
       // Verify user is a participant
       const participant = await db
@@ -196,7 +218,7 @@ export const chatRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const userId = await resolveMysqlUserId(db, supabaseUuid);
+      const userId = await resolveMysqlUserId(db, supabaseUuid, ctx);
 
       // Verify user is participant
       const participant = await db
@@ -269,7 +291,7 @@ export const chatRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const userId = await resolveMysqlUserId(db, supabaseUuid);
+      const userId = await resolveMysqlUserId(db, supabaseUuid, ctx);
 
       await db
         .update(chatParticipants)
@@ -306,7 +328,7 @@ export const chatRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const userId = await resolveMysqlUserId(db, supabaseUuid);
+      const userId = await resolveMysqlUserId(db, supabaseUuid, ctx);
 
       // Verify user is participant
       const participant = await db

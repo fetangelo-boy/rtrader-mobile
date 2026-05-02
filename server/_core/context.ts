@@ -17,13 +17,13 @@ export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
   res: CreateExpressContextOptions["res"];
   user: User | null;
-  supabaseUser: { id: string; email: string } | null;
+  supabaseUser: { id: string; email: string; name?: string } | null;
   jwtUser: JwtUser | null;
 };
 
 export async function createContext(opts: CreateExpressContextOptions): Promise<TrpcContext> {
   let user: User | null = null;
-  let supabaseUser: { id: string; email: string } | null = null;
+  let supabaseUser: { id: string; email: string; name?: string } | null = null;
   let jwtUser: JwtUser | null = null;
 
   const authHeader = opts.req.headers.authorization;
@@ -59,6 +59,9 @@ export async function createContext(opts: CreateExpressContextOptions): Promise<
         supabaseUser = {
           id: data.user.id,
           email: data.user.email || "",
+          name: (data.user.user_metadata?.full_name as string) ||
+                (data.user.user_metadata?.name as string) ||
+                undefined,
         };
         console.log("[Auth] Supabase user authenticated:", supabaseUser.email);
       } else if (error) {
