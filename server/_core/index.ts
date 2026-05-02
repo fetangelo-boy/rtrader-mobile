@@ -2,13 +2,15 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import process from "process";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerAdminRoutes } from "../routers/admin";
 import { registerRequestRoutes } from "../routers/requests";
-import { registerTelegramBotRoutes } from "../routers/telegram-bot";
+import { initializeTelegramBot, shutdownTelegramBot } from "../routers/telegram-bot";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
+import type { Server } from "http";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
@@ -60,7 +62,9 @@ async function startServer() {
   registerOAuthRoutes(app);
   registerAdminRoutes(app);
   registerRequestRoutes(app);
-  registerTelegramBotRoutes(app);
+  
+  // Initialize Telegram bot with Long Polling
+  initializeTelegramBot();
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });
@@ -83,6 +87,13 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`[api] server listening on port ${port}`);
+  });
+  
+  // Cleanup on shutdown
+  process.on('SIGINT', () => {
+    console.log('[api] Shutting down...');
+    shutdownTelegramBot();
+    process.exit(0);
   });
 }
 
