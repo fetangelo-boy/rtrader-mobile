@@ -1,10 +1,21 @@
-import { Alert, ScrollView, Text, TextInput, TouchableOpacity, View, Pressable, ActivityIndicator, Linking } from "react-native";
+import {
+  Alert,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Pressable,
+  ActivityIndicator,
+  Linking,
+} from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useState, useEffect } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { SESSION_TOKEN_KEY, USER_INFO_KEY } from "@/constants/oauth";
+import { signInWithEmail } from "@/lib/supabase-auth";
 
 const TELEGRAM_BOT_URL = "https://t.me/rtrader_mobapp_bot?start=app";
 const REFRESH_TOKEN_KEY = "app_refresh_token";
@@ -40,43 +51,31 @@ export default function LoginScreen() {
 
     try {
       setLoading(true);
-      const apiUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:3000";
 
-      // Use Supabase-based login endpoint (POST /api/auth/login)
-      const response = await fetch(`${apiUrl}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailVal, password: passwordVal }),
-      });
+      // Use Supabase Auth directly — stable URL, no dependency on sandbox Express server
+      const { user, session } = await signInWithEmail(emailVal.trim(), passwordVal);
 
-      let data: any;
-      try {
-        data = await response.json();
-      } catch {
-        throw new Error("Сервер вернул некорректный ответ. Попробуйте ещё раз.");
-      }
-
-      if (!response.ok || !data.success) {
-        const msg = data?.error || "Неверный email или пароль";
-        throw new Error(msg);
-      }
-
-      if (!data.access_token) {
+      if (!session?.access_token) {
         throw new Error("Сервер не вернул токен доступа");
       }
 
       // Store access token under the key that use-auth.ts reads
-      await SecureStore.setItemAsync(SESSION_TOKEN_KEY, data.access_token);
-      if (data.refresh_token) {
-        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, data.refresh_token);
+      await SecureStore.setItemAsync(SESSION_TOKEN_KEY, session.access_token);
+      if (session.refresh_token) {
+        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, session.refresh_token);
       }
 
       // Build user info compatible with use-auth.ts User type
+      const displayName =
+        user?.user_metadata?.name ||
+        user?.user_metadata?.full_name ||
+        emailVal.split("@")[0];
+
       const userInfo = {
-        id: data.user?.id ?? 0,
-        openId: data.user?.id ?? "",
-        name: data.user?.name ?? emailVal.split("@")[0],
-        email: data.user?.email ?? emailVal,
+        id: 0,
+        openId: user?.id ?? "",
+        name: displayName,
+        email: user?.email ?? emailVal,
         loginMethod: "email",
         lastSignedIn: new Date().toISOString(),
       };
@@ -84,14 +83,23 @@ export default function LoginScreen() {
 
       router.replace("/(tabs)/chats");
     } catch (error: any) {
-      let errorMessage = error.message || "Не удалось войти в аккаунт";
-      if (error.message?.includes("Network") || error.message?.includes("Failed to fetch")) {
-        errorMessage = "Ошибка сети. Проверьте интернет-соединение.";
-      } else if (error.message?.includes("Invalid email or password")) {
+      console.error("[Login] Error:", error);
+      let errorMessage = "Не удалось войти в аккаунт";
+
+      if (error?.message?.includes("Invalid login credentials")) {
         errorMessage = "Неверный email или пароль.";
-      } else if (error.message?.includes("User not found")) {
-        errorMessage = "Пользователь не найден.";
+      } else if (error?.message?.includes("Email not confirmed")) {
+        errorMessage = "Email не подтверждён. Обратитесь в поддержку.";
+      } else if (
+        error?.message?.includes("Network") ||
+        error?.message?.includes("Failed to fetch") ||
+        error?.message?.includes("fetch")
+      ) {
+        errorMessage = "Ошибка сети. Проверьте интернет-соединение.";
+      } else if (error?.message) {
+        errorMessage = error.message;
       }
+
       Alert.alert("Ошибка входа", errorMessage);
     } finally {
       setLoading(false);
@@ -141,7 +149,15 @@ export default function LoginScreen() {
           {/* Password Input */}
           <View className="mb-6">
             <Text className="text-sm font-semibold text-foreground mb-2">Пароль</Text>
-            <View className="flex-row items-center" style={{ backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
+            <View
+              className="flex-row items-center"
+              style={{
+                backgroundColor: colors.surface,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
               <TextInput
                 value={password}
                 onChangeText={setPassword}
@@ -209,6 +225,12 @@ export default function LoginScreen() {
               Получить доступ через Telegram
             </Text>
           </TouchableOpacity>
+
+          {/* Hint */}
+          <Text className="text-xs text-muted text-center mt-4">
+            Для получения доступа оплатите подписку через{"\n"}нашего Telegram-бота. После
+            проверки оплаты вам{"\n"}будут отправлены логин и пароль.
+          </Text>
         </View>
       </ScrollView>
     </ScreenContainer>

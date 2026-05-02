@@ -422,3 +422,9 @@
 - [x] FIX: Invalid Date в /renew — data.expires_at → data.subscription.expires_at
 - [x] UX: Добавлена кнопка "Войти в RTrader" с deep link rtrader://login?... в сообщение с кредами
 - [x] FIX: ADMIN_IDS обновлён числовым ID 716116024
+
+## Login Fix - Supabase Direct Auth (2026-05-02) ✅
+- [x] FIX: login.tsx переключён на signInWithEmail (Supabase напрямую, стабильный URL)
+- [x] FIX: lib/trpc.ts переключён с jwt_access_token на SESSION_TOKEN_KEY (app_session_token)
+- [x] Подтверждён активный Supabase проект: vfxezndvkaxlimthkeyx
+- [x] TypeScript ошибок нет

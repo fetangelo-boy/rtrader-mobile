@@ -2,11 +2,9 @@ import { createTRPCReact } from "@trpc/react-query";
 import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import type { AppRouter } from "@/server/routers";
-import { getApiBaseUrl } from "@/constants/oauth";
+import { getApiBaseUrl, SESSION_TOKEN_KEY } from "@/constants/oauth";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
-
-const JWT_ACCESS_TOKEN_KEY = "jwt_access_token";
 
 /**
  * tRPC React client for type-safe API calls.
@@ -37,11 +35,11 @@ export function createTRPCClient() {
             
             if (Platform.OS !== 'web') {
               // Native: use SecureStore
-              token = await SecureStore.getItemAsync(JWT_ACCESS_TOKEN_KEY);
+              token = await SecureStore.getItemAsync(SESSION_TOKEN_KEY);
             } else {
               // Web: use localStorage
               token = typeof window !== 'undefined' 
-                ? localStorage.getItem(JWT_ACCESS_TOKEN_KEY)
+                ? localStorage.getItem(SESSION_TOKEN_KEY)
                 : null;
             }
             
