@@ -49,7 +49,7 @@ const config: ExpoConfig = {
   icon: "./assets/images/icon.png",
   scheme: "rtrader",
   userInterfaceStyle: "automatic",
-  newArchEnabled: true,
+  newArchEnabled: false,
   owner: "fedortaneev",
   extra: {
     eas: {
@@ -105,22 +105,10 @@ const config: ExpoConfig = {
   updates: {
     enabled: false,
   },
+  // Temporarily disabled for Expo Go compatibility
+  // TODO: Re-enable after testing with Development Build
   plugins: [
     "expo-router",
-    "expo-notifications",
-    [
-      "expo-audio",
-      {
-        microphonePermission: "Allow $(PRODUCT_NAME) to access your microphone.",
-      },
-    ],
-    [
-      "expo-video",
-      {
-        supportsBackgroundPlayback: true,
-        supportsPictureInPicture: true,
-      },
-    ],
     [
       "expo-splash-screen",
       {
@@ -133,27 +121,9 @@ const config: ExpoConfig = {
         },
       },
     ],
-    [
-      "expo-notifications",
-      {
-        sounds: [
-          "./assets/sounds/notification.wav",
-        ],
-      },
-    ],
-    [
-      "expo-build-properties",
-      {
-        android: {
-          buildArchs: ["armeabi-v7a", "arm64-v8a"],
-          minSdkVersion: 24,
-        },
-      },
-    ],
   ],
   experiments: {
     typedRoutes: true,
-    reactCompiler: true,
   },
 };
 

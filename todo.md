@@ -360,3 +360,38 @@
 - [ ] Extract test account from Supabase
 - [ ] Conduct APK testing with test account
 - [ ] Deliver complete tester instructions (new standard format)
+
+
+## Phase 3: Expo Go Testing (2026-05-02) — TEMPORARY STATE
+**⚠️ RULES:** See EXPO_GO_TESTING_RULES.md
+- [ ] Test Expo Go with simplified config (newArchEnabled: false, no native plugins)
+- [ ] Verify app loads without "Something went wrong" error
+- [ ] Test basic navigation (tabs, screens)
+- [ ] Test auth flow (login with test account)
+- [ ] Test chat functionality (list, open, send message)
+- [ ] Document any issues found
+- [ ] Confirm Expo Go testing successful
+- [ ] ⚠️ DO NOT commit changes to main
+- [ ] ⚠️ DO NOT develop new features in this state
+- [ ] ⚠️ DO NOT push to GitHub
+
+## Phase 4: Restore Production Config & Build (After Expo Go Testing)
+**CRITICAL:** Restore ALL disabled plugins before building APK
+- [ ] Restore app.config.ts: newArchEnabled = true
+- [ ] Restore app.config.ts: re-enable expo-audio plugin
+- [ ] Restore app.config.ts: re-enable expo-video plugin
+- [ ] Restore app.config.ts: re-enable expo-notifications with sounds
+- [ ] Restore app.config.ts: re-enable expo-build-properties
+- [ ] Restore app.config.ts: re-enable React Compiler
+- [ ] Verify no code changes were made (git diff)
+- [ ] Restart dev server
+- [ ] Commit: "Restore production config after Expo Go testing"
+- [ ] Push to GitHub
+
+## Phase 5: Production APK Build & Delivery
+- [ ] Build final APK with EAS (eas build --platform android --profile production)
+- [ ] Verify APK includes: notifications, audio, video, New Architecture
+- [ ] Generate APK download link
+- [ ] Test APK on real device
+- [ ] Provide APK link to user for testing
+- [ ] Prepare for Google Play Store submission
