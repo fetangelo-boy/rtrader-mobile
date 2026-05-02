@@ -1,4 +1,4 @@
-import { router, protectedProcedure } from "../_core/trpc";
+import { router, protectedProcedure, supabaseProtectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { chats, messages, chatParticipants, users, pushTokens } from "../../drizzle/schema";
 import { eq, and, desc, ne, inArray } from "drizzle-orm";
@@ -9,12 +9,17 @@ export const chatRouter = router({
    * Get list of chats for current user
    * Returns chats where user is a participant, with last message info
    */
-  list: protectedProcedure.query(async ({ ctx }: any) => {
-    const userId = ctx.jwtUser?.userId || ctx.user?.id;
-    if (!userId) throw new Error("Unauthorized");
+  list: supabaseProtectedProcedure.query(async ({ ctx }: any) => {
+    const supabaseUuid = ctx.supabaseUser?.id;
+    if (!supabaseUuid) throw new Error("Unauthorized");
 
     const db = await getDb();
     if (!db) throw new Error("Database not available");
+
+    // Resolve MySQL user ID from Supabase UUID (stored in openId column)
+    const [mysqlUser] = await db.select({ id: users.id }).from(users).where(eq(users.openId, supabaseUuid)).limit(1);
+    if (!mysqlUser) throw new Error("Please login (10001)");
+    const userId = String(mysqlUser.id);
 
     // Get all chats where user is a participant
     const userChats = await db
@@ -56,10 +61,10 @@ export const chatRouter = router({
   /**
    * Get info for a single chat with user's role
    */
-  getChatInfo: protectedProcedure
+  getChatInfo: supabaseProtectedProcedure
     .input(z.object({ chatId: z.number() }))
     .query(async ({ input, ctx }: any) => {
-      const userId = ctx.jwtUser?.userId || ctx.user?.id;
+      const userId = ctx.supabaseUser?.id;
       if (!userId) throw new Error("Unauthorized");
 
       const db = await getDb();
@@ -96,7 +101,7 @@ export const chatRouter = router({
   /**
    * Get messages for a specific chat with pagination
    */
-  getMessages: protectedProcedure
+  getMessages: supabaseProtectedProcedure
     .input(
       z.object({
         chatId: z.number(),
@@ -105,7 +110,7 @@ export const chatRouter = router({
       })
     )
     .query(async ({ input, ctx }: any) => {
-      const userId = ctx.jwtUser?.userId || ctx.user?.id;
+      const userId = ctx.supabaseUser?.id;
       if (!userId) throw new Error("Unauthorized");
 
       const db = await getDb();
@@ -159,7 +164,7 @@ export const chatRouter = router({
    * - Enforces info_only restrictions
    * - Sends push notifications
    */
-  sendMessage: protectedProcedure
+  sendMessage: supabaseProtectedProcedure
     .input(
       z.object({
         chatId: z.number(),
@@ -170,7 +175,7 @@ export const chatRouter = router({
       })
     )
     .mutation(async ({ input, ctx }: any) => {
-      const userId = ctx.jwtUser?.userId || ctx.user?.id;
+      const userId = ctx.supabaseUser?.id;
       if (!userId) throw new Error("Unauthorized");
 
       const db = await getDb();
@@ -238,10 +243,10 @@ export const chatRouter = router({
   /**
    * Mute/unmute notifications for a chat
    */
-  setMuted: protectedProcedure
+  setMuted: supabaseProtectedProcedure
     .input(z.object({ chatId: z.number(), isMuted: z.boolean() }))
     .mutation(async ({ input, ctx }: any) => {
-      const userId = ctx.jwtUser?.userId || ctx.user?.id;
+      const userId = ctx.supabaseUser?.id;
       if (!userId) throw new Error("Unauthorized");
 
       const db = await getDb();
@@ -266,7 +271,7 @@ export const chatRouter = router({
    * - Saves file to S3-compatible storage
    * - Returns media URL
    */
-  uploadMedia: protectedProcedure
+  uploadMedia: supabaseProtectedProcedure
     .input(
       z.object({
         chatId: z.number(),
@@ -276,7 +281,7 @@ export const chatRouter = router({
       })
     )
     .mutation(async ({ input, ctx }: any) => {
-      const userId = ctx.jwtUser?.userId || ctx.user?.id;
+      const userId = ctx.supabaseUser?.id;
       if (!userId) throw new Error("Unauthorized");
 
       const db = await getDb();

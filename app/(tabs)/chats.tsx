@@ -186,8 +186,8 @@ export default function ChatsScreen() {
             console.log('[ChatsScreen] User clicked retry');
             setError(null);
             setLoading(true);
-            // Force refresh
-            window.location.reload?.();
+            // Invalidate and refetch the query
+            trpc.useUtils().chat.list.invalidate();
           }}
           style={{ backgroundColor: colors.primary }}
           className="px-6 py-3 rounded-lg"
