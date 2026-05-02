@@ -4,11 +4,10 @@ import { useColors } from "@/hooks/use-colors";
 import { useState, useEffect } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as SecureStore from "expo-secure-store";
+import { SESSION_TOKEN_KEY, USER_INFO_KEY } from "@/constants/oauth";
 
 const TELEGRAM_BOT_URL = "https://t.me/rtrader_mobapp_bot?start=app";
-const SESSION_TOKEN_KEY = "jwt_access_token";
-const REFRESH_TOKEN_KEY = "jwt_refresh_token";
-const USER_INFO_KEY = "jwt_user_info";
+const REFRESH_TOKEN_KEY = "app_refresh_token";
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -42,44 +41,46 @@ export default function LoginScreen() {
     try {
       setLoading(true);
       const apiUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:3000";
-      
-      // Call the new JWT login endpoint via tRPC
-      const response = await fetch(`${apiUrl}/api/trpc/auth.login`, {
+
+      // Use Supabase-based login endpoint (POST /api/auth/login)
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          json: {
-            email: emailVal,
-            password: passwordVal,
-          },
-        }),
+        body: JSON.stringify({ email: emailVal, password: passwordVal }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || "Login failed");
+      let data: any;
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error("Сервер вернул некорректный ответ. Попробуйте ещё раз.");
       }
 
-      const data = await response.json();
-      
-      // Extract the result from tRPC response format
-      // tRPC wraps the response in { result: { data: { json: {...} } } }
-      const result = data.result?.data?.json;
-      
-      if (!result?.success || !result?.accessToken) {
-        throw new Error("Invalid response from server");
+      if (!response.ok || !data.success) {
+        const msg = data?.error || "Неверный email или пароль";
+        throw new Error(msg);
       }
 
-      // Store JWT tokens in secure storage
-      await SecureStore.setItemAsync(SESSION_TOKEN_KEY, result.accessToken);
-      if (result.refreshToken) {
-        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, result.refreshToken);
+      if (!data.access_token) {
+        throw new Error("Сервер не вернул токен доступа");
       }
 
-      // Store user info for quick access
-      if (result.user) {
-        await SecureStore.setItemAsync(USER_INFO_KEY, JSON.stringify(result.user));
+      // Store access token under the key that use-auth.ts reads
+      await SecureStore.setItemAsync(SESSION_TOKEN_KEY, data.access_token);
+      if (data.refresh_token) {
+        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, data.refresh_token);
       }
+
+      // Build user info compatible with use-auth.ts User type
+      const userInfo = {
+        id: data.user?.id ?? 0,
+        openId: data.user?.id ?? "",
+        name: data.user?.name ?? emailVal.split("@")[0],
+        email: data.user?.email ?? emailVal,
+        loginMethod: "email",
+        lastSignedIn: new Date().toISOString(),
+      };
+      await SecureStore.setItemAsync(USER_INFO_KEY, JSON.stringify(userInfo));
 
       router.replace("/(tabs)/chats");
     } catch (error: any) {

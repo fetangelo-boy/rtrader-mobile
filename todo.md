@@ -415,3 +415,10 @@
 - [ ] Test bot /start command in Telegram
 - [ ] Test full flow: tariff selection → payment details → receipt → admin approve → credentials
 
+
+## Bug Fixes Session (2026-05-02) ✅
+- [x] FIX: JSON Parse error при входе — login.tsx переключён на /api/auth/login (Supabase)
+- [x] FIX: Несовместимость ключей SecureStore (jwt_access_token → app_session_token)
+- [x] FIX: Invalid Date в /renew — data.expires_at → data.subscription.expires_at
+- [x] UX: Добавлена кнопка "Войти в RTrader" с deep link rtrader://login?... в сообщение с кредами
+- [x] FIX: ADMIN_IDS обновлён числовым ID 716116024

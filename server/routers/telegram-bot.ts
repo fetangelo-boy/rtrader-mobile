@@ -344,6 +344,9 @@ async function handleApproveCommand(update: TelegramUpdate) {
         `📅 Подписка: ${days} дней`
     );
 
+    // Build deep link for auto-login
+    const deepLink = `rtrader://login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+
     // Send credentials to user
     await sendMessage(
       targetTelegramId,
@@ -355,12 +358,13 @@ async function handleApproveCommand(update: TelegramUpdate) {
         `🔑 Пароль: <code>${password}</code>\n\n` +
         `━━━━━━━━━━━━━━━━━━━━━━\n` +
         `<b>Как войти:</b>\n` +
-        `1. Откройте приложение RTrader\n` +
-        `2. Введите email и пароль\n\n` +
+        `1. Нажмите кнопку «Войти в RTrader» ниже — вход автоматически\n` +
+        `2. Или откройте приложение вручную и введите данные выше\n\n` +
         `Добро пожаловать в RTrading Club! 🚀`,
       {
         reply_markup: {
           inline_keyboard: [
+            [{ text: "🚀 Войти в RTrader", url: deepLink }],
             [{ text: "🏠 Главное меню", callback_data: "home" }],
           ],
         },
@@ -426,7 +430,11 @@ async function handleRenewCommand(update: TelegramUpdate) {
       return;
     }
 
-    const expiryDate = new Date(data.expires_at).toLocaleDateString("ru-RU");
+    // Fix: server returns expires_at inside subscription object
+    const rawExpiry = data.expires_at || data.subscription?.expires_at;
+    const expiryDate = rawExpiry
+      ? new Date(rawExpiry).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" })
+      : "неизвестно";
     await sendMessage(
       chatId,
       `✅ Подписка продлена на ${days} дней.\n` +
