@@ -428,3 +428,4 @@
 - [x] FIX: lib/trpc.ts переключён с jwt_access_token на SESSION_TOKEN_KEY (app_session_token)
 - [x] Подтверждён активный Supabase проект: vfxezndvkaxlimthkeyx
 - [x] TypeScript ошибок нет
+- [x] Fix chat messages not loading — all chat procedures were using Supabase UUID instead of MySQL user ID; added resolveMysqlUserId() helper to all procedures

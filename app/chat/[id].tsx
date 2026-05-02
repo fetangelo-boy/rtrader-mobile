@@ -86,29 +86,18 @@ export default function ChatDetailScreen() {
   useEffect(() => {
     if (messagesData) {
       const formattedMessages: Message[] = messagesData.map((msg: any) => {
-        // profiles is an object, not an array
-        const profile = msg.profiles;
-        const author = (profile?.username && String(profile.username).trim()) ? String(profile.username).trim() : "Пользователь";
-        
-        // reply_to_msg is now a single object (or null) resolved server-side
-        const replyToMsg = msg.reply_to_msg && typeof msg.reply_to_msg === 'object' && !Array.isArray(msg.reply_to_msg)
-          ? msg.reply_to_msg
-          : null;
-        
+        // Server returns author as { id, name, email } from MySQL users table
+        const authorName = (msg.author?.name && String(msg.author.name).trim())
+          ? String(msg.author.name).trim()
+          : "Пользователь";
+
         return {
-          id: msg.id,
-          user_id: msg.user_id,
-          author: author,
+          id: String(msg.id),
+          user_id: String(msg.userId),
+          author: authorName,
           content: msg.content,
-          created_at: msg.created_at,
-          reply_to_message_id: msg.reply_to_message_id,
-          replyTo: replyToMsg ? {
-            author: (() => {
-              const rp = replyToMsg.profiles;
-              return (rp?.username && String(rp.username).trim()) ? String(rp.username).trim() : "Пользователь";
-            })(),
-            content: replyToMsg.content,
-          } : undefined,
+          created_at: msg.createdAt,
+          reply_to_message_id: msg.replyToId ? String(msg.replyToId) : undefined,
           isOwn: false,
         };
       });

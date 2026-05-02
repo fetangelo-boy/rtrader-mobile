@@ -4,6 +4,20 @@ import { chats, messages, chatParticipants, users, pushTokens } from "../../driz
 import { eq, and, desc, ne, inArray } from "drizzle-orm";
 import { z } from "zod";
 
+/**
+ * Resolve MySQL numeric user ID from Supabase UUID.
+ * All chat procedures MUST call this — chatParticipants.userId stores MySQL IDs, not Supabase UUIDs.
+ */
+async function resolveMysqlUserId(db: any, supabaseUuid: string): Promise<string> {
+  const [mysqlUser] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.openId, supabaseUuid))
+    .limit(1);
+  if (!mysqlUser) throw new Error("Please login (10001)");
+  return String(mysqlUser.id);
+}
+
 export const chatRouter = router({
   /**
    * Get list of chats for current user
@@ -16,10 +30,7 @@ export const chatRouter = router({
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
-    // Resolve MySQL user ID from Supabase UUID (stored in openId column)
-    const [mysqlUser] = await db.select({ id: users.id }).from(users).where(eq(users.openId, supabaseUuid)).limit(1);
-    if (!mysqlUser) throw new Error("Please login (10001)");
-    const userId = String(mysqlUser.id);
+    const userId = await resolveMysqlUserId(db, supabaseUuid);
 
     // Get all chats where user is a participant
     const userChats = await db
@@ -64,11 +75,13 @@ export const chatRouter = router({
   getChatInfo: supabaseProtectedProcedure
     .input(z.object({ chatId: z.number() }))
     .query(async ({ input, ctx }: any) => {
-      const userId = ctx.supabaseUser?.id;
-      if (!userId) throw new Error("Unauthorized");
+      const supabaseUuid = ctx.supabaseUser?.id;
+      if (!supabaseUuid) throw new Error("Unauthorized");
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      const userId = await resolveMysqlUserId(db, supabaseUuid);
 
       const chat = await db
         .select()
@@ -110,11 +123,13 @@ export const chatRouter = router({
       })
     )
     .query(async ({ input, ctx }: any) => {
-      const userId = ctx.supabaseUser?.id;
-      if (!userId) throw new Error("Unauthorized");
+      const supabaseUuid = ctx.supabaseUser?.id;
+      if (!supabaseUuid) throw new Error("Unauthorized");
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      const userId = await resolveMysqlUserId(db, supabaseUuid);
 
       // Verify user is a participant
       const participant = await db
@@ -175,11 +190,13 @@ export const chatRouter = router({
       })
     )
     .mutation(async ({ input, ctx }: any) => {
-      const userId = ctx.supabaseUser?.id;
-      if (!userId) throw new Error("Unauthorized");
+      const supabaseUuid = ctx.supabaseUser?.id;
+      if (!supabaseUuid) throw new Error("Unauthorized");
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      const userId = await resolveMysqlUserId(db, supabaseUuid);
 
       // Verify user is participant
       const participant = await db
@@ -246,11 +263,13 @@ export const chatRouter = router({
   setMuted: supabaseProtectedProcedure
     .input(z.object({ chatId: z.number(), isMuted: z.boolean() }))
     .mutation(async ({ input, ctx }: any) => {
-      const userId = ctx.supabaseUser?.id;
-      if (!userId) throw new Error("Unauthorized");
+      const supabaseUuid = ctx.supabaseUser?.id;
+      if (!supabaseUuid) throw new Error("Unauthorized");
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      const userId = await resolveMysqlUserId(db, supabaseUuid);
 
       await db
         .update(chatParticipants)
@@ -281,11 +300,13 @@ export const chatRouter = router({
       })
     )
     .mutation(async ({ input, ctx }: any) => {
-      const userId = ctx.supabaseUser?.id;
-      if (!userId) throw new Error("Unauthorized");
+      const supabaseUuid = ctx.supabaseUser?.id;
+      if (!supabaseUuid) throw new Error("Unauthorized");
 
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      const userId = await resolveMysqlUserId(db, supabaseUuid);
 
       // Verify user is participant
       const participant = await db
@@ -316,7 +337,6 @@ export const chatRouter = router({
       }
 
       // TODO: Upload to S3-compatible storage
-      // For now, return a placeholder URL
       const mediaUrl = `https://s3.rtrader11.ru/chat-media/${input.chatId}/${Date.now()}-${input.fileName}`;
 
       return {
@@ -368,17 +388,6 @@ async function sendPushNotifications(
     if (tokens.length === 0) return;
 
     // TODO: Send via Expo Push API
-    // const response = await fetch("https://exp.host/--/api/v2/push/send", {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify({
-    //     to: tokens.map(t => t.token),
-    //     title: "New message",
-    //     body: message.content.substring(0, 100),
-    //     data: { chatId, messageId: message.id },
-    //   }),
-    // });
-
     console.log(`[Push] Would send to ${tokens.length} devices`);
   } catch (error) {
     console.error("[Push] Error sending notifications:", error);
