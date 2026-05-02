@@ -218,11 +218,7 @@ export function initializeTelegramBot(): void {
     }
   });
 
-  console.log("[Telegram] Bot handlers initialized successfully");
-  
-  // Enable polling AFTER all handlers are registered
-  bot.startPolling();
-  console.log("[Telegram] Bot polling started");
+  console.log("[Telegram] Bot handlers initialized successfully (webhook mode - no polling)");
 }
 
 /**

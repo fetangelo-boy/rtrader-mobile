@@ -627,79 +627,49 @@ async function processUpdate(update: TelegramUpdate) {
   }
 }
 
-// ─── Long Polling ────────────────────────────────────────────────────────────
+// ─── Webhook Handler ─────────────────────────────────────────────────────────
 
-let isPolling = false;
-let lastUpdateId = 0;
-
-async function deleteWebhook() {
+/**
+ * Express route handler for Telegram webhook.
+ * Register this route in server/_core/index.ts:
+ *   app.post("/api/bot/webhook", handleTelegramWebhook);
+ */
+export async function handleTelegramWebhook(req: any, res: any) {
   try {
-    const res = await fetch(`${BOT_API_URL}/deleteWebhook`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ drop_pending_updates: true }),
-    });
-    const data = await res.json();
-    if (data.ok) {
-      console.log("[Bot] ✅ Webhook deleted");
-    } else {
-      console.error("[Bot] Failed to delete webhook:", data.description);
-    }
+    const update = req.body as TelegramUpdate;
+    // Respond immediately to Telegram (must be within 5 seconds)
+    res.sendStatus(200);
+    // Process update asynchronously
+    await processUpdate(update);
   } catch (e) {
-    console.error("[Bot] deleteWebhook error:", e);
+    console.error("[Bot] Webhook handler error:", e);
   }
 }
 
-async function startPolling() {
-  if (isPolling) return;
-  if (!BOT_TOKEN) {
-    console.error("[Bot] BOT_TOKEN not set, skipping");
-    return;
-  }
-
-  await deleteWebhook();
-  isPolling = true;
-  console.log("[Bot] ✅ Long Polling started for @rtrader_mobapp_bot");
-
-  while (isPolling) {
-    try {
-      const res = await fetch(`${BOT_API_URL}/getUpdates`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          offset: lastUpdateId + 1,
-          timeout: 25,
-          allowed_updates: ["message", "callback_query"],
-        }),
-        signal: AbortSignal.timeout(35000),
-      });
-
-      if (!res.ok) {
-        console.error(`[Bot] getUpdates failed: ${res.status}`);
-        await new Promise((r) => setTimeout(r, 5000));
-        continue;
-      }
-
-      const data = await res.json();
-      if (!data.ok) {
-        console.error("[Bot] API error:", data.description);
-        await new Promise((r) => setTimeout(r, 5000));
-        continue;
-      }
-
-      if (data.result?.length > 0) {
-        for (const update of data.result) {
-          lastUpdateId = Math.max(lastUpdateId, update.update_id);
-          processUpdate(update).catch((e) => console.error("[Bot] Unhandled update error:", e));
-        }
-      }
-    } catch (e: any) {
-      if (e?.name === "TimeoutError" || e?.name === "AbortError") {
-        continue; // Normal long-poll timeout
-      }
-      console.error("[Bot] Polling error:", e);
-      await new Promise((r) => setTimeout(r, 5000));
+/**
+ * Register the webhook URL with Telegram API.
+ * Called once on server startup.
+ */
+async function registerWebhook() {
+  const webhookUrl = `${SERVER_URL}/api/bot/webhook`;
+  try {
+    const res = await fetch(`${BOT_API_URL}/setWebhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: webhookUrl,
+        allowed_updates: ["message", "callback_query"],
+        drop_pending_updates: true,
+      }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      console.log(`[Bot] ✅ Webhook registered: ${webhookUrl}`);
+    } else {
+      console.error("[Bot] ❌ Failed to register webhook:", data.description);
     }
+  } catch (e) {
+    console.error("[Bot] registerWebhook error:", e);
   }
 }
 
@@ -708,11 +678,10 @@ export function initializeTelegramBot() {
     console.warn("[Bot] BOT_TOKEN not configured, skipping bot initialization");
     return;
   }
-  console.log("[Bot] 🤖 Initializing @rtrader_mobapp_bot...");
-  startPolling().catch((e) => console.error("[Bot] Fatal polling error:", e));
+  console.log("[Bot] 🤖 Initializing @rtrader_mobapp_bot (webhook mode)...");
+  registerWebhook().catch((e) => console.error("[Bot] Fatal webhook registration error:", e));
 }
 
 export function shutdownTelegramBot() {
-  isPolling = false;
-  console.log("[Bot] Polling stopped");
+  console.log("[Bot] Webhook mode — no cleanup needed");
 }
