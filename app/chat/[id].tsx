@@ -171,6 +171,7 @@ export default function ChatDetailScreen() {
             item.isOwn ? "bg-primary" : "bg-surface"
           )}
         >
+          {!item.isOwn && (
             <Text className="text-xs font-semibold text-muted mb-1">{item.author}</Text>
           )}
           <Text className={cn("text-sm", item.isOwn ? "text-background" : "text-foreground")}>
@@ -287,12 +288,15 @@ export default function ChatDetailScreen() {
               returnKeyType="send"
               onSubmitEditing={handleSendMessage}
               blurOnSubmit={false}
+              editable={!sendMessageMutation.isPending}
             />
             <Pressable
               onPress={handleSendMessage}
+              disabled={!newMessage.trim() || sendMessageMutation.isPending}
               style={({ pressed }) => [
                 {
                   opacity:
+                    !newMessage.trim() || sendMessageMutation.isPending
                       ? 0.3
                       : pressed
                       ? 0.7
