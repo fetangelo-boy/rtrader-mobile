@@ -429,3 +429,33 @@
 - [x] Подтверждён активный Supabase проект: vfxezndvkaxlimthkeyx
 - [x] TypeScript ошибок нет
 - [x] Fix chat messages not loading — all chat procedures were using Supabase UUID instead of MySQL user ID; added resolveMysqlUserId() helper to all procedures
+
+## PROFITKING Architecture — Лента постов из Telegram-канала (2026-05-03)
+
+### Этап 1: База данных — таблица posts
+- [ ] Создать миграцию Supabase: таблица `posts`
+- [ ] Включить Supabase Realtime для таблицы `posts`
+- [ ] Настроить RLS: подписчики читают, только Edge Function пишет
+
+### Этап 2: Supabase Edge Function — Telegram Webhook
+- [ ] Создать Edge Function `telegram-webhook`
+- [ ] Парсить update: текст, фото (→ Supabase Storage), видео (→ file_id)
+- [ ] Сохранять пост в таблицу `posts`
+- [ ] Зарегистрировать Webhook у Telegram: setWebhook на URL Edge Function
+- [ ] Добавить бота @rtrader_mobapp_bot в канал как администратора
+
+### Этап 3: Edge Function — медиапрокси для видео
+- [ ] Создать Edge Function `media-proxy`: принимает file_id, возвращает временную ссылку
+- [ ] Защитить эндпоинт: только авторизованные пользователи
+
+### Этап 4: Экран "Лента" в мобильном приложении
+- [ ] Добавить таб "Лента" в навигацию
+- [ ] Добавить иконку для таба в icon-symbol.tsx
+- [ ] Создать экран app/(tabs)/feed.tsx
+- [ ] Подключить Supabase Realtime для мгновенного появления постов
+- [ ] Отображение текста, фото, видео (через media-proxy)
+
+### Этап 5: Supabase Realtime в чатах (убрать polling)
+- [x] Заменить polling (refetchInterval: 8000) в app/chat/[id].tsx на Supabase Realtime
+- [x] Добавить рендеринг медиа (photo inline, video placeholder) в сообщениях
+- [ ] Заменить polling в app/(tabs)/chats.tsx на Supabase Realtime (при необходимости)

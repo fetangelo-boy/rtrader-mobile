@@ -9,14 +9,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
+  Image,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
+import { supabase } from "@/lib/supabase-client";
 
 interface Message {
   id: string;
@@ -30,6 +31,9 @@ interface Message {
     content: string;
   };
   isOwn?: boolean;
+  media_type?: "photo" | "video" | "document" | null;
+  media_url?: string | null;
+  file_id?: string | null;
 }
 
 function safeFormatTime(value: any): string {
@@ -45,7 +49,6 @@ function safeFormatTime(value: any): string {
 export default function ChatDetailScreen() {
   const colors = useColors();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { id: chatId } = useLocalSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -55,6 +58,8 @@ export default function ChatDetailScreen() {
   const inputRef = useRef<TextInput>(null);
 
   const { data: chatInfo } = trpc.chat.getChatInfo.useQuery({ chatId: Number(chatId) });
+
+  const utils = trpc.useUtils();
 
   const {
     data: messagesData,
@@ -67,9 +72,57 @@ export default function ChatDetailScreen() {
       offset: 0,
     },
     {
-      refetchInterval: 8000, // Poll every 8 seconds for new messages
+      // No polling — Supabase Realtime handles live updates
+      refetchInterval: false,
     }
   );
+
+  // Supabase Realtime: subscribe to new messages in this chat
+  useEffect(() => {
+    const supabaseChatId = `chat-${chatId}`;
+    const channel = supabase
+      .channel(`messages:${supabaseChatId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `chat_id=eq.${supabaseChatId}`,
+        },
+        (payload) => {
+          const row = payload.new as any;
+          // Refetch from tRPC to get author info
+          utils.chat.getMessages.invalidate({ chatId: Number(chatId) });
+          // Optimistically append if it's not from the current user
+          // (own messages are already appended in sendMessageMutation.onSuccess)
+          const newMsg: Message = {
+            id: String(row.id),
+            user_id: String(row.user_id),
+            author: row.user_id,
+            content: row.content || "",
+            created_at: row.created_at || new Date().toISOString(),
+            media_type: row.media_type || null,
+            media_url: row.media_url || null,
+            file_id: row.file_id || null,
+            isOwn: false,
+          };
+          setMessages((prev) => {
+            // Avoid duplicates
+            if (prev.some((m) => m.id === newMsg.id)) return prev;
+            return [...prev, newMsg];
+          });
+          setTimeout(() => {
+            scrollViewRef.current?.scrollToEnd({ animated: true });
+          }, 100);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [chatId]);
 
   const sendMessageMutation = trpc.chat.sendMessage.useMutation({
     onSuccess: (sentMessage: any) => {
@@ -128,6 +181,9 @@ export default function ChatDetailScreen() {
           created_at: createdAtStr,
           reply_to_message_id: msg.replyToId ? String(msg.replyToId) : undefined,
           isOwn: false,
+          media_type: (msg.mediaType as any) || null,
+          media_url: (msg as any).mediaUrl || null,
+          file_id: null,
         };
       });
       setMessages(formattedMessages);
@@ -181,9 +237,37 @@ export default function ChatDetailScreen() {
           {!item.isOwn && (
             <Text className="text-xs font-semibold text-muted mb-1">{item.author}</Text>
           )}
-          <Text className={cn("text-sm", item.isOwn ? "text-background" : "text-foreground")}>
-            {item.content}
-          </Text>
+          {/* Media: photo */}
+          {item.media_type === "photo" && item.media_url ? (
+            <Image
+              source={{ uri: item.media_url }}
+              style={{ width: 220, height: 160, borderRadius: 8, marginBottom: 4 }}
+              resizeMode="cover"
+            />
+          ) : null}
+          {/* Media: video placeholder (file_id resolved via media-proxy) */}
+          {item.media_type === "video" ? (
+            <View
+              style={{
+                width: 220,
+                height: 120,
+                borderRadius: 8,
+                marginBottom: 4,
+                backgroundColor: colors.border,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ fontSize: 32 }}>▶️</Text>
+              <Text className="text-xs text-muted mt-1">Видео</Text>
+            </View>
+          ) : null}
+          {/* Text content */}
+          {item.content ? (
+            <Text className={cn("text-sm", item.isOwn ? "text-background" : "text-foreground")}>
+              {item.content}
+            </Text>
+          ) : null}
           {safeFormatTime(item.created_at) ? (
             <Text
               className={cn(
