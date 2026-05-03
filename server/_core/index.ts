@@ -109,8 +109,13 @@ async function startServer() {
   server.listen(port, () => {
     console.log(`[api] server listening on port ${port}`);
     
-    // Initialize Telegram bot (registers webhook URL with Telegram API)
-    initializeTelegramBot();
+    // Initialize Telegram bot — only when not explicitly disabled
+    // Set DISABLE_BOT=true in local dev to avoid 409 conflicts when Railway is running
+    if (process.env.DISABLE_BOT !== 'true') {
+      initializeTelegramBot();
+    } else {
+      console.log('[Bot] Disabled via DISABLE_BOT=true (Railway handles bot in production)');
+    }
   });
   
   // Cleanup on shutdown
