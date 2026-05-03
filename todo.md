@@ -459,3 +459,12 @@
 - [x] Заменить polling (refetchInterval: 8000) в app/chat/[id].tsx на Supabase Realtime
 - [x] Добавить рендеринг медиа (photo inline, video placeholder) в сообщениях
 - [ ] Заменить polling в app/(tabs)/chats.tsx на Supabase Realtime (при необходимости)
+
+## Universal VIP Club Architecture — Posts Table (2026-05-03)
+- [x] Создать миграцию Supabase: таблица `posts` (универсальная основа для ленты контента)
+- [x] Применить миграцию — таблица создана в Supabase (vfxezndvkaxlimthkeyx)
+- [x] RLS: authenticated users могут читать, service_role управляет
+- [x] Realtime: `alter publication supabase_realtime add table public.posts`
+- [x] Индексы: по chat_id+created_at и по created_at для глобальной ленты
+- [ ] Подключить Telegram webhook → posts (когда бот добавлен в канал)
+- [ ] Создать экран ленты постов (когда нужна конкретная реализация для клуба)
