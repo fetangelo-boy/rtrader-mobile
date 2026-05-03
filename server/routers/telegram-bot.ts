@@ -122,11 +122,14 @@ async function handleStart(update: TelegramUpdate) {
   console.log(`[Bot] /start from ${firstName} (${msg.from.id})`);
 
   try {
+    console.log(`[Bot] handleStart: processing for ${firstName} (${chatId})`);
     if (startParam === "renew") {
+      console.log(`[Bot] handleStart: renew param detected, showing tariff menu`);
       await showTariffMenu(chatId);
       return;
     }
 
+    console.log(`[Bot] handleStart: sending welcome message to ${chatId}`);
     const success = await sendMessage(
       chatId,
       `👋 <b>Добро пожаловать в RTrader Club, ${firstName}!</b>\n\n` +
@@ -147,8 +150,11 @@ async function handleStart(update: TelegramUpdate) {
         },
       }
     );
+    console.log(`[Bot] handleStart: sendMessage returned ${success}`);
     if (!success) {
       console.error(`[Bot] /start: sendMessage failed for chat ${chatId}`);
+    } else {
+      console.log(`[Bot] handleStart: welcome message sent successfully to ${chatId}`);
     }
   } catch (e) {
     console.error(`[Bot] /start handler error for ${firstName} (${msg.from.id}):`, e);
