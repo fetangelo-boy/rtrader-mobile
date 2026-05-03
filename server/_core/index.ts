@@ -7,7 +7,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerAdminRoutes } from "../routers/admin";
 import { registerRequestRoutes } from "../routers/requests";
-import { initializeTelegramBot, shutdownTelegramBot, handleTelegramWebhook } from "../routers/telegram-bot";
+import { initializeTelegramBot, shutdownTelegramBot } from "../routers/telegram-bot";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import type { Server } from "http";
@@ -85,8 +85,7 @@ async function startServer() {
   registerAdminRoutes(app);
   registerRequestRoutes(app);
 
-  // Telegram webhook endpoint — Telegram POSTs updates here
-  app.post("/api/bot/webhook", handleTelegramWebhook);
+  // Telegram bot uses long polling (no webhook endpoint needed)
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });
