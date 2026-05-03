@@ -244,6 +244,77 @@ export function registerAdminRoutes(app: Express) {
   });
 
   /**
+   * POST /api/admin/approve-subscription
+   *
+   * Used by Telegram bot /approve command.
+   * Accepts { telegram_id, plan_id, days } — creates user if new, renews if existing.
+   * Returns { success, deepLink, expiresAt } for bot to send credentials to user.
+   */
+  app.post("/api/admin/approve-subscription", async (req: Request, res: Response) => {
+    if (!verifyAdminKey(req, res)) return;
+    try {
+      const { telegram_id, plan_id, days = 30 } = req.body;
+      if (!telegram_id || !plan_id) {
+        res.status(400).json({ error: "telegram_id and plan_id are required" });
+        return;
+      }
+      const supabase = getServerSupabase();
+      const { data: existingUsers } = await supabase.auth.admin.listUsers();
+      const existingUser = existingUsers?.users?.find(
+        (u: any) => u.user_metadata?.telegram_id === String(telegram_id)
+      );
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+      if (existingUser) {
+        // Renew subscription for existing user
+        await supabase.from("subscriptions").upsert({
+          user_id: existingUser.id,
+          plan: plan_id,
+          status: "active",
+          started_at: now.toISOString(),
+          expires_at: expiresAt.toISOString(),
+          updated_at: now.toISOString(),
+        }, { onConflict: "user_id" });
+        const email = existingUser.email || `tg${telegram_id}@rtrader.app`;
+        const deepLink = `rtrader://login?email=${encodeURIComponent(email)}`;
+        res.json({ success: true, user_id: existingUser.id, email, deepLink, expiresAt: expiresAt.toISOString() });
+        return;
+      }
+      // New user — create account
+      const email = `tg${telegram_id}@rtrader.app`;
+      const password = generatePassword(10);
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { telegram_id: String(telegram_id), email_verified: true },
+      });
+      if (authError || !authData.user) {
+        res.status(500).json({ error: "Failed to create user: " + (authError?.message || "unknown") });
+        return;
+      }
+      const userId = authData.user.id;
+      await supabase.from("profiles").upsert({ id: userId, username: `user_${telegram_id}` });
+      const subscriptionId = generateSubscriptionId();
+      await supabase.from("subscriptions").insert({
+        id: subscriptionId,
+        user_id: userId,
+        plan: plan_id,
+        status: "active",
+        started_at: now.toISOString(),
+        expires_at: expiresAt.toISOString(),
+        created_at: now.toISOString(),
+        updated_at: now.toISOString(),
+      });
+      const deepLink = `rtrader://login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+      res.json({ success: true, user_id: userId, email, password, deepLink, expiresAt: expiresAt.toISOString() });
+    } catch (error: any) {
+      console.error("[Admin] approve-subscription error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  /**
    * POST /api/admin/renew-subscription
    *
    * Extend or renew an existing subscription.
