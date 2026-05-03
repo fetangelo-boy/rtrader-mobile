@@ -60,11 +60,16 @@ export default function ChatDetailScreen() {
     data: messagesData,
     isLoading: messagesLoading,
     error: messagesError,
-  } = trpc.chat.getMessages.useQuery({
-    chatId: Number(chatId),
-    limit: 50,
-    offset: 0,
-  });
+  } = trpc.chat.getMessages.useQuery(
+    {
+      chatId: Number(chatId),
+      limit: 50,
+      offset: 0,
+    },
+    {
+      refetchInterval: 8000, // Poll every 8 seconds for new messages
+    }
+  );
 
   const sendMessageMutation = trpc.chat.sendMessage.useMutation({
     onSuccess: (sentMessage: any) => {
@@ -226,7 +231,7 @@ export default function ChatDetailScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? insets.bottom : 0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 0}
       >
         {messages.length > 0 ? (
           <FlatList
