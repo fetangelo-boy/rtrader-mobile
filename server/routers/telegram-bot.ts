@@ -94,19 +94,23 @@ async function answerCallbackQuery(id: string, text?: string) {
 // ─── Handlers ────────────────────────────────────────────────────────────────
 
 async function showMainMenu(chatId: number, firstName: string) {
-  await sendMessage(
-    chatId,
-    `🏠 <b>Главное меню</b>\n\nПривет, ${firstName}! Чем могу помочь?`,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "💳 Оформить подписку", callback_data: "subscribe" }],
-          [{ text: "📊 Проверить статус", callback_data: "status" }],
-          [{ text: "❓ Помощь", callback_data: "help" }],
-        ],
-      },
-    }
-  );
+  try {
+    await sendMessage(
+      chatId,
+      `🏠 <b>Главное меню</b>\n\nПривет, ${firstName}! Чем могу помочь?`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "💳 Оформить подписку", callback_data: "subscribe" }],
+            [{ text: "📊 Проверить статус", callback_data: "status" }],
+            [{ text: "❓ Помощь", callback_data: "help" }],
+          ],
+        },
+      }
+    );
+  } catch (e) {
+    console.error(`[Bot] showMainMenu error for ${firstName}:`, e);
+  }
 }
 
 async function handleStart(update: TelegramUpdate) {
@@ -117,31 +121,38 @@ async function handleStart(update: TelegramUpdate) {
 
   console.log(`[Bot] /start from ${firstName} (${msg.from.id})`);
 
-  if (startParam === "renew") {
-    await showTariffMenu(chatId);
-    return;
-  }
-
-  await sendMessage(
-    chatId,
-    `👋 <b>Добро пожаловать в RTrader Club, ${firstName}!</b>\n\n` +
-      `Это закрытое сообщество трейдеров и инвесторов.\n\n` +
-      `<b>Что вас ждёт:</b>\n` +
-      `• Реал-тайм чаты с сообществом\n` +
-      `• Торговые идеи и аналитика\n` +
-      `• Обсуждение стратегий\n` +
-      `• Уведомления о сигналах\n\n` +
-      `Для получения доступа оформите подписку.`,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "💳 Оформить подписку", callback_data: "subscribe" }],
-          [{ text: "📊 Проверить статус", callback_data: "status" }],
-          [{ text: "❓ Помощь", callback_data: "help" }],
-        ],
-      },
+  try {
+    if (startParam === "renew") {
+      await showTariffMenu(chatId);
+      return;
     }
-  );
+
+    const success = await sendMessage(
+      chatId,
+      `👋 <b>Добро пожаловать в RTrader Club, ${firstName}!</b>\n\n` +
+        `Это закрытое сообщество трейдеров и инвесторов.\n\n` +
+        `<b>Что вас ждёт:</b>\n` +
+        `• Реал-тайм чаты с сообществом\n` +
+        `• Торговые идеи и аналитика\n` +
+        `• Обсуждение стратегий\n` +
+        `• Уведомления о сигналах\n\n` +
+        `Для получения доступа оформите подписку.`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "💳 Оформить подписку", callback_data: "subscribe" }],
+            [{ text: "📊 Проверить статус", callback_data: "status" }],
+            [{ text: "❓ Помощь", callback_data: "help" }],
+          ],
+        },
+      }
+    );
+    if (!success) {
+      console.error(`[Bot] /start: sendMessage failed for chat ${chatId}`);
+    }
+  } catch (e) {
+    console.error(`[Bot] /start handler error for ${firstName} (${msg.from.id}):`, e);
+  }
 }
 
 async function showTariffMenu(chatId: number) {
