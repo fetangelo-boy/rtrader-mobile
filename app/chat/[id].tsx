@@ -10,6 +10,7 @@ import {
   Platform,
   Keyboard,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -44,6 +45,7 @@ function safeFormatTime(value: any): string {
 export default function ChatDetailScreen() {
   const colors = useColors();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { id: chatId } = useLocalSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -224,7 +226,7 @@ export default function ChatDetailScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.bottom : 0}
       >
         {messages.length > 0 ? (
           <FlatList
@@ -235,6 +237,8 @@ export default function ChatDetailScreen() {
             contentContainerStyle={{ paddingVertical: 8 }}
             onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
             style={{ flex: 1 }}
+            keyboardDismissMode="on-drag"
+            scrollEnabled={true}
           />
         ) : (
           <View className="flex-1 items-center justify-center">
@@ -283,11 +287,15 @@ export default function ChatDetailScreen() {
               placeholder="Введите сообщение..."
               placeholderTextColor={colors.muted}
               className="flex-1 px-3 py-2 rounded-lg text-foreground"
-              style={{ backgroundColor: colors.surface, maxHeight: 100 }}
+              style={{ backgroundColor: colors.surface, maxHeight: 100, minHeight: 40 }}
               multiline={true}
               returnKeyType="send"
-              onSubmitEditing={handleSendMessage}
-              blurOnSubmit={false}
+              onSubmitEditing={() => {
+                if (newMessage.trim()) {
+                  handleSendMessage();
+                }
+              }}
+              blurOnSubmit={true}
               editable={!sendMessageMutation.isPending}
             />
             <Pressable
