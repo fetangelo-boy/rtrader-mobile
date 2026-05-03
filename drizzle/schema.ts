@@ -186,3 +186,31 @@ export const subscriptions = mysqlTable("subscriptions", {
 
 export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = typeof subscriptions.$inferInsert;
+
+/**
+ * One-time login tokens — short-lived tokens for Telegram deep-link auto-login.
+ * Generated after /approve, sent to user as deep link, exchanged once for a session.
+ */
+export const oneTimeLoginTokens = mysqlTable("one_time_login_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+
+  /** The one-time token (random hex string) */
+  token: varchar("token", { length: 128 }).notNull().unique(),
+
+  /** Supabase user ID this token belongs to */
+  supabaseUserId: varchar("supabaseUserId", { length: 64 }).notNull(),
+
+  /** Telegram ID of the user (for logging/debugging) */
+  telegramId: varchar("telegramId", { length: 64 }),
+
+  /** When this token expires (15 minutes from creation) */
+  expiresAt: timestamp("expiresAt").notNull(),
+
+  /** Whether this token has already been used */
+  usedAt: timestamp("usedAt"),
+
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type OneTimeLoginToken = typeof oneTimeLoginTokens.$inferSelect;
+export type InsertOneTimeLoginToken = typeof oneTimeLoginTokens.$inferInsert;

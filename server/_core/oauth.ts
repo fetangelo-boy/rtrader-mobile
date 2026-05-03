@@ -212,6 +212,182 @@ export function registerOAuthRoutes(app: Express) {
     }
   });
 
+  /**
+   * POST /api/auth/generate-telegram-token
+   *
+   * Generates a one-time login token for a Supabase user (called internally by the bot after /approve).
+   * Requires X-Admin-Key header.
+   *
+   * Body: { supabase_user_id: string, telegram_id?: string }
+   * Response: { token: string, expires_at: string }
+   */
+  app.post("/api/auth/generate-telegram-token", async (req: Request, res: Response) => {
+    try {
+      const adminKey = process.env.ADMIN_API_KEY;
+      const providedKey = req.headers["x-admin-key"] as string;
+      if (!adminKey || providedKey !== adminKey) {
+        res.status(401).json({ error: "Invalid admin key" });
+        return;
+      }
+
+      const { supabase_user_id, telegram_id } = req.body;
+      if (!supabase_user_id) {
+        res.status(400).json({ error: "supabase_user_id is required" });
+        return;
+      }
+
+      const { getDb } = await import("../db.js");
+      const { oneTimeLoginTokens } = await import("../../drizzle/schema.js");
+      const crypto = await import("crypto");
+
+      const db = await getDb();
+      if (!db) {
+        res.status(503).json({ error: "Database unavailable" });
+        return;
+      }
+
+      // Ensure table exists (create if not)
+      try {
+        await db.execute(
+          `CREATE TABLE IF NOT EXISTS one_time_login_tokens (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            token VARCHAR(128) NOT NULL UNIQUE,
+            supabaseUserId VARCHAR(64) NOT NULL,
+            telegramId VARCHAR(64),
+            expiresAt TIMESTAMP NOT NULL,
+            usedAt TIMESTAMP NULL,
+            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+          )` as any
+        );
+      } catch (createErr: any) {
+        // Table might already exist, ignore
+        if (!createErr.message?.includes("already exists")) {
+          console.error("[Auth] Failed to create one_time_login_tokens table:", createErr.message);
+        }
+      }
+
+      // Generate secure random token
+      const token = crypto.default.randomBytes(48).toString("hex");
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+      await db.insert(oneTimeLoginTokens).values({
+        token,
+        supabaseUserId: supabase_user_id,
+        telegramId: telegram_id ? String(telegram_id) : null,
+        expiresAt,
+      });
+
+      console.log(`[Auth] Generated one-time token for user ${supabase_user_id} (tg: ${telegram_id})`);
+
+      res.json({
+        token,
+        expires_at: expiresAt.toISOString(),
+      });
+    } catch (error: any) {
+      console.error("[Auth] generate-telegram-token error:", error);
+      res.status(500).json({ error: "Failed to generate token" });
+    }
+  });
+
+  /**
+   * POST /api/auth/exchange-telegram-token
+   *
+   * Exchanges a one-time Telegram login token for a Supabase session.
+   * Called by the mobile app when opened via deep link after /approve.
+   *
+   * Body: { token: string }
+   * Response: { success, access_token, refresh_token, user }
+   */
+  app.post("/api/auth/exchange-telegram-token", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.body;
+
+      if (!token || typeof token !== "string") {
+        res.status(400).json({ error: "token is required" });
+        return;
+      }
+
+      const { getDb } = await import("../db.js");
+      const { oneTimeLoginTokens } = await import("../../drizzle/schema.js");
+      const { eq, and, isNull, gt } = await import("drizzle-orm");
+      const { getServerSupabase } = await import("../../lib/supabase.js");
+
+      const db = await getDb();
+      if (!db) {
+        res.status(503).json({ error: "Database unavailable" });
+        return;
+      }
+
+      // Find the token
+      const now = new Date();
+      const [tokenRecord] = await db
+        .select()
+        .from(oneTimeLoginTokens)
+        .where(
+          and(
+            eq(oneTimeLoginTokens.token, token),
+            isNull(oneTimeLoginTokens.usedAt),
+            gt(oneTimeLoginTokens.expiresAt, now)
+          )
+        )
+        .limit(1);
+
+      if (!tokenRecord) {
+        console.warn(`[Auth] exchange-telegram-token: invalid/expired/used token: ${token.slice(0, 16)}...`);
+        res.status(401).json({ error: "Token is invalid, expired, or already used" });
+        return;
+      }
+
+      // Mark token as used immediately (one-time use)
+      await db
+        .update(oneTimeLoginTokens)
+        .set({ usedAt: now })
+        .where(eq(oneTimeLoginTokens.token, token));
+
+      // Get user from Supabase by ID
+      const supabase = getServerSupabase();
+      const { data: userData, error: userError } = await supabase.auth.admin.getUserById(
+        tokenRecord.supabaseUserId
+      );
+
+      if (userError || !userData.user) {
+        console.error(`[Auth] exchange-telegram-token: user not found in Supabase: ${tokenRecord.supabaseUserId}`);
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+
+      // Create a new Supabase session for this user
+      const { data: sessionData, error: sessionError } = await supabase.auth.admin.createSession({
+        user_id: tokenRecord.supabaseUserId,
+      });
+
+      if (sessionError || !sessionData.session) {
+        console.error(`[Auth] exchange-telegram-token: failed to create session:`, sessionError?.message);
+        res.status(500).json({ error: "Failed to create session" });
+        return;
+      }
+
+      const user = userData.user;
+      const username = user.user_metadata?.name || user.email?.split("@")[0] || "User";
+
+      console.log(`[Auth] exchange-telegram-token: success for user ${user.email} (tg: ${tokenRecord.telegramId})`);
+
+      res.json({
+        success: true,
+        access_token: sessionData.session.access_token,
+        refresh_token: sessionData.session.refresh_token,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: username,
+        },
+      });
+    } catch (error: any) {
+      console.error("[Auth] exchange-telegram-token error:", error);
+      res.status(500).json({ error: "Token exchange failed" });
+    }
+  });
+
   // Establish session cookie from Bearer token
   // Used by iframe preview: frontend receives token via postMessage, then calls this endpoint
   // to get a proper Set-Cookie response from the backend (3000-xxx domain)

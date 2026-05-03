@@ -414,7 +414,7 @@ async function handleApproveCommand(update: TelegramUpdate) {
       return;
     }
 
-    const { email, password } = data;
+    const { email, password, user_id: supabaseUserId } = data;
 
     // Notify admin
     await sendMessage(
@@ -426,8 +426,24 @@ async function handleApproveCommand(update: TelegramUpdate) {
         `📅 Подписка: ${days} дней`
     );
 
-    // Build deep link for auto-login
-    const deepLink = `rtrader://login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+    // Generate one-time login token and build secure deep link
+    let deepLink = `rtrader://login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+    try {
+      const tokenResponse = await fetch(`${SERVER_URL}/api/auth/generate-telegram-token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Key": ADMIN_API_KEY || "" },
+        body: JSON.stringify({ supabase_user_id: supabaseUserId, telegram_id: String(targetTelegramId) }),
+      });
+      if (tokenResponse.ok) {
+        const tokenData = await tokenResponse.json();
+        if (tokenData.token) {
+          deepLink = `rtrader://auth/telegram?token=${encodeURIComponent(tokenData.token)}`;
+          console.log(`[Bot] Generated one-time token for ${targetTelegramId}`);
+        }
+      }
+    } catch (tokenErr) {
+      console.error("[Bot] Failed to generate one-time token, falling back to password deep link:", tokenErr);
+    }
 
     // Send credentials to user
     await sendMessage(
