@@ -667,16 +667,14 @@ async function processUpdate(update: TelegramUpdate) {
  * Register this route in server/_core/index.ts:
  *   app.post("/api/bot/webhook", handleTelegramWebhook);
  */
-export async function handleTelegramWebhook(req: any, res: any) {
-  try {
-    const update = req.body as TelegramUpdate;
-    // Respond immediately to Telegram (must be within 5 seconds)
-    res.sendStatus(200);
-    // Process update asynchronously
-    await processUpdate(update);
-  } catch (e) {
-    console.error("[Bot] Webhook handler error:", e);
-  }
+export function handleTelegramWebhook(req: any, res: any) {
+  // Respond immediately to Telegram (must be within 5 seconds)
+  res.sendStatus(200);
+  // Process update fully asynchronously — never block or throw to Express
+  const update = req.body as TelegramUpdate;
+  processUpdate(update).catch((e) => {
+    console.error("[Bot] Unhandled processUpdate error:", e);
+  });
 }
 
 /**

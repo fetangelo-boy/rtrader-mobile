@@ -100,4 +100,16 @@ async function startServer() {
   });
 }
 
+// Prevent server crash on unhandled promise rejections (e.g. from bot handlers)
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[api] Unhandled Promise Rejection at:', promise, 'reason:', reason);
+  // Do NOT exit — keep the server running
+});
+
+// Prevent server crash on uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('[api] Uncaught Exception:', err);
+  // Do NOT exit — keep the server running
+});
+
 startServer().catch(console.error);
