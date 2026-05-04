@@ -1,5 +1,5 @@
 # RTrader Mobile — Статус проекта
-> Последнее обновление: **2026-05-04 (сессия 2)**
+> Последнее обновление: **2026-05-04 (сессия 3)**
 > Этот файл — единственный источник правды о состоянии проекта.
 
 ---
@@ -116,11 +116,13 @@ Mobile App (React Native / Expo)
 | `telegram-webhook` | ✅ Задеплоена, работает | Принимает все апдейты бота: команды, кнопки, посты канала |
 | `media-proxy` | ✅ Задеплоена | Конвертирует Telegram `file_id` → временная ссылка |
 
-**Secrets в Supabase Edge Functions:**
-- `BOT_TOKEN` = `8749763017:AAG4QfuYoTwC60zbSi-pxVnTjp-1eOLtDzY`
-- `WEBHOOK_SECRET` = `rtrader_webhook_secret_2024`
+**Secrets в Supabase Edge Functions (точные имена — с префиксом TELEGRAM_):**
+- `TELEGRAM_BOT_TOKEN` = `8749763017:AAG4QfuYoTwC60zbSi-pxVnTjp-1eOLtDzY`
+- `TELEGRAM_WEBHOOK_SECRET` = `rtrader_webhook_secret_2024`
 - `ADMIN_IDS` = `716116024`
-- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — установлены
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — auto-injected Supabase
+
+⚠️ ВАЖНО: имена именно `TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_SECRET` — с префиксом. Не `BOT_TOKEN`, не `WEBHOOK_SECRET`.
 
 ---
 
@@ -166,6 +168,13 @@ Mobile App (React Native / Expo)
 - [x] Новый токен бота `AAG4QfuYoTwC60zbSi-pxVnTjp-1eOLtDzY` установлен в Supabase secrets
 - [x] Webhook пересоздан с новым токеном — работает без ошибок
 
+### Сессия 2026-05-04 (сессия 3)
+- [x] Исправлены имена secrets: `TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_SECRET` (с префиксом)
+- [x] `pendingPayments` перенесён из in-memory Map в Supabase таблицу `pending_payments`
+- [x] Edge Function: `/approve` работает напрямую через Supabase Auth Admin API (Railway не вызывается)
+- [x] Проверен полный флоу: /start → тариф → pending_payments → /approve → подписка → deep link
+- [x] Запушено на GitHub (commit `b4d1926`)
+
 ---
 
 ## 9. Что осталось сделать
@@ -191,3 +200,6 @@ Mobile App (React Native / Expo)
 | MySQL дублировал Supabase | ✅ РЕШЕНО — активные роутеры переведены на Supabase |
 | Edge Function не была задеплоена | ✅ РЕШЕНО — задеплоена и работает |
 | Long-polling на Railway | ✅ РЕШЕНО — DISABLE_BOT=true |
+| pendingPayments терялись (in-memory) | ✅ РЕШЕНО — хранятся в Supabase `pending_payments` |
+| /approve вызывал Railway | ✅ РЕШЕНО — напрямую через Supabase Auth Admin API |
+| Неверные имена secrets в Edge Function | ✅ РЕШЕНО — TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET |
