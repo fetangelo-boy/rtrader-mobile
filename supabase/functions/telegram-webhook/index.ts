@@ -242,7 +242,7 @@ async function handleApprove(
         expires_at: expiresAt.toISOString(),
         updated_at: now.toISOString(),
       }, { onConflict: "user_id" });
-      deepLink = `rtrader://login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(renewPassword)}`;
+      deepLink = `https://rtradermob-gjsezgkc.manus.space/auth/open?email=${encodeURIComponent(email)}&password=${encodeURIComponent(renewPassword)}`;
       await sendMsg(token, chatId, `✅ Подписка продлена для ${targetTelegramId}\nEmail: ${email}\nДо: ${expiresAt.toLocaleDateString("ru-RU")}`);
     } else {
       // Create new user
@@ -273,7 +273,7 @@ async function handleApprove(
         updated_at: now.toISOString(),
       });
 
-      deepLink = `rtrader://login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+      deepLink = `https://rtradermob-gjsezgkc.manus.space/auth/open?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
       await sendMsg(token, chatId, `✅ Аккаунт создан для ${targetTelegramId}\nEmail: ${email}\nДо: ${expiresAt.toLocaleDateString("ru-RU")}`);
     }
 

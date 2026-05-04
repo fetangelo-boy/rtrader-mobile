@@ -108,6 +108,7 @@ export default function RootLayout() {
             <Stack.Screen name="chat/[id]" />
             <Stack.Screen name="oauth/callback" />
             <Stack.Screen name="auth/telegram" />
+            <Stack.Screen name="auth/open" />
           </Stack>
           <StatusBar style="auto" />
         </QueryClientProvider>
