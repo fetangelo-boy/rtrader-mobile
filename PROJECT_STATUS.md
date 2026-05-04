@@ -1,6 +1,6 @@
 # RTrader Mobile — Статус проекта
-> Последнее обновление: 2026-05-04  
-> Этот файл — единственный источник правды о состоянии проекта. Обновлять при каждом значимом изменении.
+> Последнее обновление: **2026-05-04 (сессия 2)**
+> Этот файл — единственный источник правды о состоянии проекта.
 
 ---
 
@@ -13,7 +13,6 @@
 | **Deep Link схема** | `rtrader://` |
 | **GitHub репо** | `fetangelo-boy/rtrader-mobile` |
 | **Manus Dev URL** | `https://8081-iqbo82wz5ez3zf6ocn4av-401261bf.us2.manus.computer` |
-| **Manus API URL** | `http://127.0.0.1:3000` (внутри sandbox) |
 | **Последний чекпоинт** | `b8cafd77` (2026-05-03) |
 
 ### Supabase
@@ -23,48 +22,42 @@
 | **URL** | `https://vfxezndvkaxlimthkeyx.supabase.co` |
 | **Anon Key** | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmeGV6bmR2a2F4bGltdGhrZXl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNjcxODEsImV4cCI6MjA5MTk0MzE4MX0.Kt0v47bv258m-pOMymSY2PZeVxw7WI5yItE6wdxddCE` |
 
-### Railway
+### Railway (API-сервер, бот отключён)
 | Параметр | Значение |
 |---|---|
-| **Project Name** | `rtrader-backend` |
-| **Service Name** | `rtrader-server` |
 | **Public URL** | `https://rtrader-server-production.up.railway.app` |
-| **Project ID** | `89010a7e-14a3-4758-8f58-efe4bdf3beba` |
-| **Service ID** | `90c6b008-d42c-48eb-8bb1-1c58d366a4f8` |
-| **Account** | `fetangelo@gmail.com` (Dmitriy) |
-| **Plan** | Trial (29 дней осталось на 2026-05-03) |
-| **DISABLE_BOT** | `true` — long-polling отключён, бот работает через webhook |
-| **Status** | ✅ Работает. Бот НЕ запускает long-polling (DISABLE_BOT=true) |
+| **DISABLE_BOT** | `true` — long-polling полностью отключён |
+| **Роль** | Только tRPC API-сервер. Бот НЕ запускается. |
+| **Статус** | ✅ Работает. Скоро будет выведен из эксплуатации. |
 
 ### Telegram Bot
 | Параметр | Значение |
 |---|---|
 | **Username** | `@rtrader_mobapp_bot` |
+| **Token** | `8749763017:AAG4QfuYoTwC60zbSi-pxVnTjp-1eOLtDzY` (актуальный на 2026-05-04) |
 | **Admin Telegram ID** | `716116024` (числовой) + `rhodes4ever` (username) |
 | **Режим работы** | **Webhook** → Supabase Edge Function (PROFITKING паттерн) |
 | **Webhook URL** | `https://vfxezndvkaxlimthkeyx.supabase.co/functions/v1/telegram-webhook` |
-| **Webhook Secret** | `rtrader_webhook_secret_2026` |
+| **Webhook Secret** | `rtrader_webhook_secret_2024` |
 | **Статус** | ✅ Работает 24/7 через Supabase Edge Function. Long-polling ОТКЛЮЧЁН. |
 
 ---
 
-## 2. Архитектура (целевая — PROFITKING-паттерн)
+## 2. Архитектура (PROFITKING-паттерн — ДОСТИГНУТ)
 
 ```
 Telegram Bot (@rtrader_mobapp_bot)
-    ↓ Webhook (PROFITKING паттерн)
+    ↓ Webhook (24/7, без засыпания)
 Supabase Edge Function (telegram-webhook)
     ↓ команды бота + посты канала
-Supabase PostgreSQL (основная БД)
+Supabase PostgreSQL (единственная БД)
     ↓ Realtime
 Mobile App (React Native / Expo)
-
-Railway Express Server (API only, DISABLE_BOT=true)
-    ↓ tRPC + REST + approve-subscription endpoint
-Supabase PostgreSQL
 ```
 
-**Принцип:** Supabase-first. MySQL используется как legacy-слой для чатов/подписок (технический долг, не блокирует работу).
+**Railway** — временный API-сервер (tRPC). Будет выведен из эксплуатации после того, как все клиенты переедут на прямые Supabase-вызовы.
+
+**MySQL** — полностью выведен из активных роутеров. Drizzle-схема осталась как legacy-код, но ни один активный роутер её не использует.
 
 ---
 
@@ -72,236 +65,129 @@ Supabase PostgreSQL
 
 | Экран | Файл | Статус |
 |---|---|---|
-| Splash / Redirect | `app/index.tsx` | ✅ Готов |
+| Splash / Redirect | `app/index.tsx` | ✅ |
 | Логин | `app/auth/login.tsx` | ✅ Supabase direct auth |
 | Логин (web) | `app/auth/login.web.tsx` | ✅ |
 | Регистрация | `app/auth/signup.tsx` | ✅ |
 | Забыл пароль | `app/auth/forgot-password.tsx` | ✅ |
 | Telegram авто-логин | `app/auth/telegram.tsx` | ✅ Deep link one-time token |
-| OAuth callback | `app/oauth/` | ✅ |
-| Список чатов | `app/(tabs)/chats.tsx` | ✅ |
-| Чат (детальный) | `app/chat/[id].tsx` | ✅ Supabase Realtime, медиа-рендеринг |
-| Аккаунт | `app/(tabs)/account.tsx` | ✅ Подписка, статус, кнопки |
+| Список чатов | `app/(tabs)/chats.tsx` | ✅ tRPC → Supabase |
+| Чат (детальный) | `app/chat/[id].tsx` | ✅ Supabase Realtime + медиа |
+| Аккаунт | `app/(tabs)/account.tsx` | ✅ Подписка из Supabase |
 | Профиль | `app/profile.tsx` | ✅ |
-| Dev-инструменты | `app/dev/` | ✅ (только для разработки) |
-
-**Навигация:** 2 таба — Чаты (`chats.fill`) и Аккаунт (`person.fill`)
 
 ---
 
-## 4. База данных
-
-### Supabase PostgreSQL (основная БД)
+## 4. База данных — Supabase PostgreSQL (единственная)
 
 | Таблица | Назначение | RLS | Realtime |
 |---|---|---|---|
 | `profiles` | Профили пользователей | ✅ | — |
-| `chats` | Список чатов (14 чатов) | ✅ | — |
+| `chats` | Список чатов | ✅ | — |
 | `chat_participants` | Участники чатов | ✅ | — |
 | `messages` | Сообщения в чатах | ✅ | ✅ |
 | `chat_settings` | Настройки чатов | ✅ | — |
 | `subscriptions` | Подписки пользователей | ✅ | — |
 | `push_tokens` | Токены push-уведомлений | ✅ | — |
-| `posts` | Посты из каналов (лента контента) | ✅ | ✅ |
+| `posts` | Посты из Telegram-каналов | ✅ | ✅ |
 
-**Миграции:** `supabase/migrations/` — 10 файлов, все применены.
-
-### MySQL / Drizzle ORM (legacy-слой, технический долг)
-
-| Таблица | Назначение |
-|---|---|
-| `users` | Пользователи |
-| `chats` | Чаты (дублирует Supabase) |
-| `messages` | Сообщения (дублирует Supabase) |
-| `chat_participants` | Участники |
-| `subscriptions` | Подписки |
-| `subscription_requests` | Заявки на подписку |
-| `subscription_plans` | Тарифные планы |
-| `payment_details` | Реквизиты оплаты |
-| `push_tokens` | Push токены |
-| `one_time_login_tokens` | Одноразовые токены входа |
-| `auth_users` | Авторизационные данные |
-
-> ⚠️ **Технический долг:** MySQL-слой работает параллельно с Supabase. Полная миграция на Supabase — задача после релиза.
+**MySQL** — больше не используется активными роутерами. Drizzle-схема сохранена как исторический артефакт.
 
 ---
 
-## 5. Серверные роутеры (tRPC + REST)
+## 5. Серверные роутеры — статус миграции
 
-| Файл | Назначение |
-|---|---|
-| `server/routers/auth.ts` | Регистрация, логин, one-time token |
-| `server/routers/chat.ts` | Список чатов, сообщения, отправка |
-| `server/routers/account.ts` | Данные аккаунта |
-| `server/routers/profile.ts` | Профиль пользователя |
-| `server/routers/subscriptions.ts` | Тарифные планы, заявки |
-| `server/routers/admin.ts` | REST API для администратора |
-| `server/routers/admin-trpc.ts` | tRPC процедуры для администратора |
-| `server/routers/notifications.ts` | Push-уведомления |
-| `server/routers/requests.ts` | Заявки на подписку |
-| `server/routers/uploads.ts` | Загрузка файлов |
-| `server/routers/protected-subscription.ts` | Защищённый контент |
-| `server/routers/telegram-bot.ts` | Инициализация и обработка бота |
+| Файл | БД | Статус |
+|---|---|---|
+| `server/routers/chat.ts` | **Supabase** | ✅ Полностью мигрирован |
+| `server/routers/auth.ts` | **Supabase Auth** | ✅ Полностью мигрирован |
+| `server/routers/admin.ts` | **Supabase** | ✅ Полностью мигрирован |
+| `server/routers/subscriptions.ts` | **Supabase** | ✅ Полностью мигрирован |
+| `server/routers/account.ts` | **Supabase** | ✅ |
+| `server/routers/admin-trpc.ts` | MySQL (legacy) | ⚠️ Не используется мобильным приложением |
+| `server/routers/requests.ts` | MySQL (legacy) | ⚠️ Не используется мобильным приложением |
 
 ---
 
-## 6. Telegram Bot — команды и флоу
+## 6. Supabase Edge Functions
 
-**Флоу подписки:**
-1. Пользователь пишет `/start` боту
-2. Бот показывает меню тарифов (из MySQL `subscription_plans`)
-3. Пользователь выбирает тариф → бот присылает реквизиты оплаты
-4. Пользователь отправляет чек → бот уведомляет администратора
-5. Администратор нажимает `/approve_<requestId>` → бот создаёт аккаунт в Supabase
-6. Бот отправляет пользователю deep link `rtrader://login?token=...` для авто-входа
+| Функция | Статус | Назначение |
+|---|---|---|
+| `telegram-webhook` | ✅ Задеплоена, работает | Принимает все апдейты бота: команды, кнопки, посты канала |
+| `media-proxy` | ✅ Задеплоена | Конвертирует Telegram `file_id` → временная ссылка |
 
-**Тарифы (из MySQL `subscription_plans`):**
-- 1 месяц — 1 700 ₽
-- 3 месяца — 4 000 ₽
-- 6 месяцев — 10 300 ₽
-- 12 месяцев — 20 000 ₽
+**Secrets в Supabase Edge Functions:**
+- `BOT_TOKEN` = `8749763017:AAG4QfuYoTwC60zbSi-pxVnTjp-1eOLtDzY`
+- `WEBHOOK_SECRET` = `rtrader_webhook_secret_2024`
+- `ADMIN_IDS` = `716116024`
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — установлены
+
+---
+
+## 7. Telegram Bot — флоу и команды
+
+**Флоу подписки (через Edge Function):**
+1. `/start` → меню тарифов
+2. Выбор тарифа → реквизиты оплаты
+3. Пользователь отправляет чек → уведомление администратору
+4. Администратор: `/approve <telegram_id> <дни>` → создаёт аккаунт в Supabase Auth
+5. Бот отправляет deep link `rtrader://login?email=...&password=...`
+
+**Тарифы (статические в Edge Function):**
+- 7 дней — 990 ₽
+- 30 дней — 2 990 ₽
+- 90 дней — 7 990 ₽
 
 **Реквизиты оплаты:** T-Bank, карта 5536 9138 8189 0954, Зерянский Роман Олегович
 
 **Команды администратора:**
-- `/approve_<requestId>` — одобрить заявку, создать аккаунт, отправить credentials
-- `/reject_<requestId>` — отклонить заявку
+- `/approve <telegram_id> [дни]` — одобрить, создать аккаунт
+- `/reject <telegram_id>` — отклонить
+- `/status <telegram_id>` — проверить статус подписки
 
 ---
 
-## 7. Supabase Edge Functions
+## 8. Хронология — что сделано
 
-| Функция | Файл | Статус | Назначение |
-|---|---|---|---|
-| `telegram-webhook` | `supabase/functions/telegram-webhook/` | ✅ Написана | Принимает посты из Telegram-канала → сохраняет в `posts` |
-| `media-proxy` | `supabase/functions/media-proxy/` | ✅ Написана | Конвертирует Telegram `file_id` → временная ссылка на медиа |
+### Сессия 2026-05-04 (сессия 1)
+- [x] Обнаружен конфликт webhook + long-polling — корневая причина ежедневных сбоев токена
+- [x] Webhook удалён, затем пересоздан правильно
+- [x] Edge Function `telegram-webhook` переписана и задеплоена
+- [x] `DISABLE_BOT=true` установлен на Railway — long-polling отключён навсегда
+- [x] PROFITKING-паттерн достигнут: бот работает через Supabase Edge Function 24/7
 
-> ⚠️ **Обе функции НЕ задеплоены** — ждут добавления бота в Telegram-канал (запланировано на ночь).
-
----
-
-## 8. Push-уведомления
-
-| Компонент | Статус |
-|---|---|
-| `hooks/use-push-notifications.ts` | ✅ Написан |
-| Регистрация токена в Supabase `push_tokens` | ✅ Реализована |
-| Отправка уведомлений через Expo Push API | ✅ Реализована в `notifications.ts` |
-| Тестирование на реальном устройстве | ⬜ Не тестировалось |
-
----
-
-## 9. Что сделано — хронология
-
-### Фаза 1: Базовое приложение
-- [x] Инициализация Expo проекта с NativeWind, TypeScript, Expo Router
-- [x] Dark Retro-Wave тема (неон: cyan/violet/pink)
-- [x] Кастомный логотип приложения
-- [x] Навигация: 2 таба (Чаты, Аккаунт)
-- [x] Экраны: список чатов, детальный чат, аккаунт
-
-### Фаза 2: Аутентификация и подписки
-- [x] Supabase Auth (email+password)
-- [x] Экраны логина, регистрации, восстановления пароля
-- [x] One-time token для авто-логина через Telegram deep link
-- [x] Защита экранов подпиской (`use-subscription-guard.ts`)
-- [x] Экран истёкшей подписки
-
-### Фаза 3: Telegram Bot
-- [x] Бот `@rtrader_mobapp_bot` — long polling режим
-- [x] Флоу регистрации: тариф → оплата → чек → одобрение → credentials
-- [x] Тарифы из MySQL (1700/4000/10300/20000 ₽)
-- [x] Deep link авто-логин после одобрения
-- [x] Admin команды: `/approve_<id>`, `/reject_<id>`
-- [x] ADMIN_IDS: `716116024` (числовой ID)
-
-### Фаза 4: Supabase интеграция
-- [x] Supabase PostgreSQL: 8 таблиц + миграции
-- [x] RLS политики для всех таблиц
-- [x] Supabase Realtime для `messages` и `posts`
-- [x] Push tokens в Supabase
-- [x] Таблица `posts` — универсальная основа для ленты контента VIP-клуба
-
-### Фаза 5: Realtime чаты и медиа (2026-05-03)
-- [x] Заменён polling (8с) на Supabase Realtime в `app/chat/[id].tsx`
-- [x] Медиа-рендеринг в сообщениях: фото инлайн, видео placeholder
-- [x] Удалены устаревшие архитектурные документы (Beget/MySQL-first)
-
-### Фаза 6: Подготовка к деплою Railway
-- [x] Добавлен endpoint `POST /api/admin/approve-subscription` в `admin.ts`
-- [x] Написан `Dockerfile` для Railway
-- [x] Railway проект `rtrader-backend` создан (Trial, 29 дней)
-- [ ] **Деплой бота на Railway — В ПРОЦЕССЕ** (проблема с Railway CLI токеном)
+### Сессия 2026-05-04 (сессия 2)
+- [x] `server/routers/chat.ts` — полностью переписан на Supabase (убран MySQL)
+- [x] `server/routers/auth.ts` — убран MySQL `auth_users`, только Supabase Auth
+- [x] `server/routers/admin.ts` — убран MySQL `chat_participants`, только Supabase
+- [x] `server/routers/subscriptions.ts` — полностью переписан на Supabase
+- [x] TypeScript: 0 ошибок после всех изменений
+- [x] Запушено на GitHub (commit `651465e`)
+- [x] Новый токен бота `AAG4QfuYoTwC60zbSi-pxVnTjp-1eOLtDzY` установлен в Supabase secrets
+- [x] Webhook пересоздан с новым токеном — работает без ошибок
 
 ---
 
-## 10. Что осталось сделать
+## 9. Что осталось сделать
 
-### Критично для продакшена
-- [ ] **Завершить деплой бота на Railway** (текущая задача)
-- [ ] Добавить бота в Telegram-канал как администратора (ночью)
-- [ ] Задеплоить Edge Functions `telegram-webhook` и `media-proxy` в Supabase
+### Следующий приоритет
+- [ ] Добавить бота `@rtrader_mobapp_bot` в VIP Telegram-канал как администратора
+- [ ] Проверить, что посты из канала появляются в таблице `posts` через Edge Function
+- [ ] Создать экран ленты постов в приложении
 
-### После деплоя
-- [ ] Подключить `telegram-webhook` → таблица `posts` (посты из канала)
-- [ ] Создать экран ленты постов (когда нужна конкретная реализация)
-- [ ] Заменить polling в `app/(tabs)/chats.tsx` на Supabase Realtime
-
-### Технический долг
-- [ ] Миграция MySQL → Supabase PostgreSQL (чаты, подписки, пользователи)
+### Технический долг (не блокирует работу)
+- [ ] Удалить legacy-роутеры `admin-trpc.ts` и `requests.ts` (MySQL, не используются)
+- [ ] Вывести Railway из эксплуатации (после перехода всех клиентов на прямой Supabase)
 - [ ] SaleBot интеграция (автоматическая проверка банковских переводов)
-- [ ] Тестирование push-уведомлений на реальном устройстве
+- [ ] Push-уведомления: тестирование на реальном устройстве
 
 ---
 
-## 11. Ключевые файлы для навигации
+## 10. Известные проблемы
 
-```
-app/
-  (tabs)/
-    chats.tsx          ← Список чатов
-    account.tsx        ← Аккаунт и подписка
-    _layout.tsx        ← Конфигурация табов
-  chat/[id].tsx        ← Детальный чат (Realtime)
-  auth/login.tsx       ← Логин (Supabase direct)
-  auth/telegram.tsx    ← Авто-логин по deep link
-
-server/
-  telegram/
-    bot-handler.ts     ← Весь код Telegram бота
-    index.ts           ← Инициализация бота
-  routers/
-    admin.ts           ← REST API для администратора
-    chat.ts            ← tRPC чаты и сообщения
-
-supabase/
-  migrations/          ← 10 SQL миграций (все применены)
-  functions/
-    telegram-webhook/  ← Edge Function (не задеплоена)
-    media-proxy/       ← Edge Function (не задеплоена)
-
-drizzle/
-  schema.ts            ← MySQL таблицы (legacy)
-  schema_subscriptions.ts ← Тарифы, заявки, оплата
-
-lib/
-  config.ts            ← Supabase URL и anon key
-  supabase-client.ts   ← Supabase JS клиент
-  supabase-auth.ts     ← Управление сессией Supabase
-
-hooks/
-  use-auth.ts          ← Состояние авторизации
-  use-subscription-guard.ts ← Защита экранов подпиской
-  use-push-notifications.ts ← Push-уведомления
-```
-
----
-
-## 12. Известные проблемы
-
-| Проблема | Статус | Решение |
-|---|---|---|
-| Бот работает в Manus sandbox (засыпает) | ⚠️ В процессе | Деплой на Railway |
-| MySQL-слой дублирует Supabase | ⚠️ Технический долг | Миграция после релиза |
-| Edge Functions не задеплоены | ⬜ Ждёт бота в канале | После ночи |
-| Railway CLI токен не работает через env | ⚠️ Решается | Используем API напрямую |
+| Проблема | Статус |
+|---|---|
+| Токен бота слетал каждый день | ✅ РЕШЕНО — конфликт webhook+polling устранён |
+| MySQL дублировал Supabase | ✅ РЕШЕНО — активные роутеры переведены на Supabase |
+| Edge Function не была задеплоена | ✅ РЕШЕНО — задеплоена и работает |
+| Long-polling на Railway | ✅ РЕШЕНО — DISABLE_BOT=true |
