@@ -1,89 +1,67 @@
-import { router, protectedProcedure, supabaseProtectedProcedure } from "../_core/trpc";
-import { getDb } from "../db";
-import { chats, messages, chatParticipants, users, pushTokens } from "../../drizzle/schema";
-import { eq, and, desc, ne, inArray } from "drizzle-orm";
+import { router, supabaseProtectedProcedure } from "../_core/trpc";
+import { getServerSupabase } from "../../lib/supabase";
 import { z } from "zod";
+import { v4 as uuidv4 } from "uuid";
 
 /**
- * Resolve MySQL numeric user ID from Supabase UUID.
- * Optionally syncs name/email from Supabase context so messages show real names.
- * All chat procedures MUST call this — chatParticipants.userId stores MySQL IDs, not Supabase UUIDs.
+ * Chat router — fully migrated to Supabase PostgreSQL.
+ * No MySQL dependency. Uses service role key for server-side operations.
  */
-async function resolveMysqlUserId(
-  db: any,
-  supabaseUuid: string,
-  ctx?: { supabaseUser?: { id: string; email?: string; name?: string } | null }
-): Promise<string> {
-  const [mysqlUser] = await db
-    .select({ id: users.id, name: users.name, email: users.email })
-    .from(users)
-    .where(eq(users.openId, supabaseUuid))
-    .limit(1);
-  if (!mysqlUser) throw new Error("Please login (10001)");
-
-  // Sync name from context if current name is empty or generic
-  const ctxEmail = ctx?.supabaseUser?.email || "";
-  const ctxName = ctx?.supabaseUser?.name || "";
-  const needsNameUpdate = !mysqlUser.name || mysqlUser.name === "Пользователь";
-  if (needsNameUpdate && (ctxName || ctxEmail)) {
-    const resolvedName = ctxName || ctxEmail.split("@")[0];
-    try {
-      await db
-        .update(users)
-        .set({ name: resolvedName, email: ctxEmail || mysqlUser.email })
-        .where(eq(users.openId, supabaseUuid));
-    } catch (_) {
-      // Non-critical — ignore update errors
-    }
-  }
-
-  return String(mysqlUser.id);
-}
-
 export const chatRouter = router({
   /**
    * Get list of chats for current user
    * Returns chats where user is a participant, with last message info
    */
   list: supabaseProtectedProcedure.query(async ({ ctx }: any) => {
-    const supabaseUuid = ctx.supabaseUser?.id;
-    if (!supabaseUuid) throw new Error("Unauthorized");
+    const userId = ctx.supabaseUser?.id as string;
+    if (!userId) throw new Error("Unauthorized");
 
-    const db = await getDb();
-    if (!db) throw new Error("Database not available");
-
-    const userId = await resolveMysqlUserId(db, supabaseUuid, ctx);
+    const supabase = getServerSupabase();
 
     // Get all chats where user is a participant
-    const userChats = await db
-      .select({
-        id: chats.id,
-        name: chats.name,
-        description: chats.description,
-        chatType: chats.chatType,
-        icon: chats.icon,
-        sortOrder: chats.sortOrder,
-        createdAt: chats.createdAt,
-        updatedAt: chats.updatedAt,
-      })
-      .from(chats)
-      .innerJoin(chatParticipants, eq(chats.id, chatParticipants.chatId))
-      .where(eq(chatParticipants.userId, userId))
-      .orderBy(desc(chats.sortOrder), desc(chats.createdAt));
+    const { data: participations, error: partError } = await supabase
+      .from("chat_participants")
+      .select("chat_id, role")
+      .eq("user_id", userId);
+
+    if (partError) throw new Error(`Failed to get participations: ${partError.message}`);
+    if (!participations || participations.length === 0) return [];
+
+    const chatIds = participations.map((p: any) => p.chat_id);
+    const roleMap: Record<string, string> = {};
+    for (const p of participations) roleMap[p.chat_id] = p.role;
+
+    // Get chats
+    const { data: chatList, error: chatError } = await supabase
+      .from("chats")
+      .select("id, name, description, type, created_at, updated_at")
+      .in("id", chatIds)
+      .order("created_at", { ascending: false });
+
+    if (chatError) throw new Error(`Failed to get chats: ${chatError.message}`);
+    if (!chatList) return [];
 
     // Enrich with last message
     const enriched = await Promise.all(
-      userChats.map(async (chat) => {
-        const lastMsg = await db
-          .select()
-          .from(messages)
-          .where(eq(messages.chatId, chat.id))
-          .orderBy(desc(messages.createdAt))
+      chatList.map(async (chat: any) => {
+        const { data: lastMsgs } = await supabase
+          .from("messages")
+          .select("id, content, created_at, user_id, media_type, media_url")
+          .eq("chat_id", chat.id)
+          .order("created_at", { ascending: false })
           .limit(1);
 
         return {
-          ...chat,
-          lastMessage: lastMsg[0] || null,
+          id: chat.id,
+          name: chat.name,
+          description: chat.description,
+          chatType: chat.type,
+          icon: null,
+          sortOrder: 0,
+          createdAt: chat.created_at,
+          updatedAt: chat.updated_at,
+          userRole: roleMap[chat.id] || "participant",
+          lastMessage: lastMsgs?.[0] || null,
         };
       })
     );
@@ -95,41 +73,42 @@ export const chatRouter = router({
    * Get info for a single chat with user's role
    */
   getChatInfo: supabaseProtectedProcedure
-    .input(z.object({ chatId: z.number() }))
+    .input(z.object({ chatId: z.union([z.number(), z.string()]) }))
     .query(async ({ input, ctx }: any) => {
-      const supabaseUuid = ctx.supabaseUser?.id;
-      if (!supabaseUuid) throw new Error("Unauthorized");
+      const userId = ctx.supabaseUser?.id as string;
+      if (!userId) throw new Error("Unauthorized");
 
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
+      const supabase = getServerSupabase();
+      const chatId = String(input.chatId);
 
-      const userId = await resolveMysqlUserId(db, supabaseUuid, ctx);
+      const { data: chat, error: chatError } = await supabase
+        .from("chats")
+        .select("*")
+        .eq("id", chatId)
+        .single();
 
-      const chat = await db
-        .select()
-        .from(chats)
-        .where(eq(chats.id, input.chatId))
-        .limit(1);
+      if (chatError || !chat) throw new Error("Chat not found");
 
-      if (!chat.length) throw new Error("Chat not found");
+      const { data: participant, error: partError } = await supabase
+        .from("chat_participants")
+        .select("role")
+        .eq("chat_id", chatId)
+        .eq("user_id", userId)
+        .single();
 
-      const participant = await db
-        .select()
-        .from(chatParticipants)
-        .where(
-          and(
-            eq(chatParticipants.chatId, input.chatId),
-            eq(chatParticipants.userId, userId)
-          )
-        )
-        .limit(1);
-
-      if (!participant.length) throw new Error("Not a participant");
+      if (partError || !participant) throw new Error("Not a participant");
 
       return {
-        ...chat[0],
-        userRole: participant[0].role,
-        isMuted: participant[0].isMuted === 1,
+        id: chat.id,
+        name: chat.name,
+        description: chat.description,
+        chatType: chat.type,
+        icon: null,
+        sortOrder: 0,
+        createdAt: chat.created_at,
+        updatedAt: chat.updated_at,
+        userRole: participant.role,
+        isMuted: false,
       };
     }),
 
@@ -139,280 +118,178 @@ export const chatRouter = router({
   getMessages: supabaseProtectedProcedure
     .input(
       z.object({
-        chatId: z.number(),
+        chatId: z.union([z.number(), z.string()]),
         limit: z.number().default(50),
         offset: z.number().default(0),
       })
     )
     .query(async ({ input, ctx }: any) => {
-      const supabaseUuid = ctx.supabaseUser?.id;
-      if (!supabaseUuid) throw new Error("Unauthorized");
+      const userId = ctx.supabaseUser?.id as string;
+      if (!userId) throw new Error("Unauthorized");
 
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      const userId = await resolveMysqlUserId(db, supabaseUuid, ctx);
+      const supabase = getServerSupabase();
+      const chatId = String(input.chatId);
 
       // Verify user is a participant
-      const participant = await db
-        .select()
-        .from(chatParticipants)
-        .where(
-          and(
-            eq(chatParticipants.chatId, input.chatId),
-            eq(chatParticipants.userId, userId)
+      const { data: participant } = await supabase
+        .from("chat_participants")
+        .select("role")
+        .eq("chat_id", chatId)
+        .eq("user_id", userId)
+        .single();
+
+      if (!participant) throw new Error("Not a participant");
+
+      // Get messages with author profile
+      const { data: msgList, error } = await supabase
+        .from("messages")
+        .select(`
+          id,
+          chat_id,
+          user_id,
+          content,
+          media_url,
+          media_type,
+          file_id,
+          reply_to_message_id,
+          tg_msg_id,
+          created_at,
+          updated_at,
+          profiles:user_id (
+            id,
+            username,
+            avatar_url
           )
-        )
-        .limit(1);
+        `)
+        .eq("chat_id", chatId)
+        .order("created_at", { ascending: false })
+        .range(input.offset, input.offset + input.limit - 1);
 
-      if (!participant.length) throw new Error("Not a participant");
+      if (error) throw new Error(`Failed to get messages: ${error.message}`);
 
-      // Get messages with author info
-      const msgList = await db
-        .select({
-          id: messages.id,
-          chatId: messages.chatId,
-          userId: messages.userId,
-          content: messages.content,
-          mediaUrl: messages.mediaUrl,
-          mediaType: messages.mediaType,
-          replyToId: messages.replyToId,
-          createdAt: messages.createdAt,
-          updatedAt: messages.updatedAt,
-          author: {
-            id: users.id,
-            name: users.name,
-            email: users.email,
-          },
-        })
-        .from(messages)
-        .innerJoin(users, eq(messages.userId, users.id))
-        .where(eq(messages.chatId, input.chatId))
-        .orderBy(desc(messages.createdAt))
-        .limit(input.limit)
-        .offset(input.offset);
-
-      return msgList.reverse(); // Return in chronological order
+      // Return in chronological order with normalized shape
+      return (msgList || []).reverse().map((m: any) => ({
+        id: m.id,
+        chatId: m.chat_id,
+        userId: m.user_id,
+        content: m.content,
+        mediaUrl: m.media_url,
+        mediaType: m.media_type,
+        fileId: m.file_id,
+        replyToId: m.reply_to_message_id,
+        createdAt: m.created_at,
+        updatedAt: m.updated_at,
+        author: m.profiles
+          ? {
+              id: m.profiles.id,
+              name: m.profiles.username || "Пользователь",
+              email: null,
+            }
+          : { id: m.user_id, name: "Пользователь", email: null },
+      }));
     }),
 
   /**
    * Send a message to a chat
-   * - Validates user is participant
-   * - Enforces info_only restrictions
-   * - Sends push notifications
    */
   sendMessage: supabaseProtectedProcedure
     .input(
       z.object({
-        chatId: z.number(),
+        chatId: z.union([z.number(), z.string()]),
         content: z.string().min(1),
-        replyToId: z.number().optional(),
+        replyToId: z.string().optional(),
         mediaUrl: z.string().optional(),
         mediaType: z.enum(["image", "video", "file"]).optional(),
       })
     )
     .mutation(async ({ input, ctx }: any) => {
-      const supabaseUuid = ctx.supabaseUser?.id;
-      if (!supabaseUuid) throw new Error("Unauthorized");
+      const userId = ctx.supabaseUser?.id as string;
+      if (!userId) throw new Error("Unauthorized");
 
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      const userId = await resolveMysqlUserId(db, supabaseUuid, ctx);
+      const supabase = getServerSupabase();
+      const chatId = String(input.chatId);
 
       // Verify user is participant
-      const participant = await db
-        .select()
-        .from(chatParticipants)
-        .where(
-          and(
-            eq(chatParticipants.chatId, input.chatId),
-            eq(chatParticipants.userId, userId)
-          )
-        )
-        .limit(1);
+      const { data: participant } = await supabase
+        .from("chat_participants")
+        .select("role")
+        .eq("chat_id", chatId)
+        .eq("user_id", userId)
+        .single();
 
-      if (!participant.length) throw new Error("Not a participant");
+      if (!participant) throw new Error("Not a participant");
 
       // Get chat info
-      const chat = await db
-        .select()
-        .from(chats)
-        .where(eq(chats.id, input.chatId))
-        .limit(1);
+      const { data: chat } = await supabase
+        .from("chats")
+        .select("type")
+        .eq("id", chatId)
+        .single();
 
-      if (!chat.length) throw new Error("Chat not found");
+      if (!chat) throw new Error("Chat not found");
 
       // Enforce info_only restrictions
-      if (chat[0].chatType === "info_only" && participant[0].role !== "admin") {
+      if (chat.type === "info_only" && participant.role !== "admin") {
         throw new Error("Only admins can post in info_only chats");
       }
 
-      // Insert message
-      await db.insert(messages).values({
-        chatId: input.chatId,
-        userId: userId,
-        content: input.content,
-        mediaUrl: input.mediaUrl,
-        mediaType: input.mediaType,
-        replyToId: input.replyToId,
-      });
+      // Map media type
+      const pgMediaType = input.mediaType === "image" ? "photo"
+        : input.mediaType === "video" ? "video"
+        : input.mediaType === "file" ? "document"
+        : null;
 
-      // Get the inserted message (most recent for this user in this chat)
-      const newMessage = await db
+      const messageId = uuidv4();
+      const { data: newMessage, error } = await supabase
+        .from("messages")
+        .insert({
+          id: messageId,
+          chat_id: chatId,
+          user_id: userId,
+          content: input.content,
+          media_url: input.mediaUrl || null,
+          media_type: pgMediaType,
+          reply_to_message_id: input.replyToId || null,
+        })
         .select()
-        .from(messages)
-        .where(
-          and(
-            eq(messages.chatId, input.chatId),
-            eq(messages.userId, userId)
-          )
-        )
-        .orderBy(desc(messages.createdAt))
-        .limit(1);
+        .single();
 
-      // Send push notifications to other participants
-      if (newMessage.length > 0) {
-        await sendPushNotifications(db, input.chatId, userId, newMessage[0]);
-      }
+      if (error) throw new Error(`Failed to send message: ${error.message}`);
 
-      return newMessage[0] || { success: false };
+      return {
+        id: newMessage.id,
+        chatId: newMessage.chat_id,
+        userId: newMessage.user_id,
+        content: newMessage.content,
+        mediaUrl: newMessage.media_url,
+        mediaType: newMessage.media_type,
+        createdAt: newMessage.created_at,
+        updatedAt: newMessage.updated_at,
+      };
     }),
 
   /**
    * Mute/unmute notifications for a chat
    */
   setMuted: supabaseProtectedProcedure
-    .input(z.object({ chatId: z.number(), isMuted: z.boolean() }))
+    .input(z.object({ chatId: z.union([z.number(), z.string()]), isMuted: z.boolean() }))
     .mutation(async ({ input, ctx }: any) => {
-      const supabaseUuid = ctx.supabaseUser?.id;
-      if (!supabaseUuid) throw new Error("Unauthorized");
+      const userId = ctx.supabaseUser?.id as string;
+      if (!userId) throw new Error("Unauthorized");
 
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
+      const supabase = getServerSupabase();
+      const chatId = String(input.chatId);
 
-      const userId = await resolveMysqlUserId(db, supabaseUuid, ctx);
-
-      await db
-        .update(chatParticipants)
-        .set({ isMuted: input.isMuted ? 1 : 0 })
-        .where(
-          and(
-            eq(chatParticipants.chatId, input.chatId),
-            eq(chatParticipants.userId, userId)
-          )
+      // Upsert into chat_settings
+      const { error } = await supabase
+        .from("chat_settings")
+        .upsert(
+          { chat_id: chatId, user_id: userId, muted: input.isMuted },
+          { onConflict: "chat_id,user_id" }
         );
+
+      if (error) throw new Error(`Failed to update mute: ${error.message}`);
 
       return { success: true, isMuted: input.isMuted };
     }),
-
-  /**
-   * Upload media to a chat message
-   * - Validates user is admin (for info_only chats)
-   * - Saves file to S3-compatible storage
-   * - Returns media URL
-   */
-  uploadMedia: supabaseProtectedProcedure
-    .input(
-      z.object({
-        chatId: z.number(),
-        fileName: z.string(),
-        fileSize: z.number(),
-        mimeType: z.string(),
-      })
-    )
-    .mutation(async ({ input, ctx }: any) => {
-      const supabaseUuid = ctx.supabaseUser?.id;
-      if (!supabaseUuid) throw new Error("Unauthorized");
-
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      const userId = await resolveMysqlUserId(db, supabaseUuid, ctx);
-
-      // Verify user is participant
-      const participant = await db
-        .select()
-        .from(chatParticipants)
-        .where(
-          and(
-            eq(chatParticipants.chatId, input.chatId),
-            eq(chatParticipants.userId, userId)
-          )
-        )
-        .limit(1);
-
-      if (!participant.length) throw new Error("Not a participant");
-
-      // Get chat info
-      const chat = await db
-        .select()
-        .from(chats)
-        .where(eq(chats.id, input.chatId))
-        .limit(1);
-
-      if (!chat.length) throw new Error("Chat not found");
-
-      // Enforce info_only restrictions
-      if (chat[0].chatType === "info_only" && participant[0].role !== "admin") {
-        throw new Error("Only admins can upload media in info_only chats");
-      }
-
-      // TODO: Upload to S3-compatible storage
-      const mediaUrl = `https://s3.rtrader11.ru/chat-media/${input.chatId}/${Date.now()}-${input.fileName}`;
-
-      return {
-        mediaUrl,
-        fileName: input.fileName,
-        uploadedAt: new Date(),
-      };
-    }),
 });
-
-/**
- * Helper: Send push notifications to all participants (except sender, except muted)
- */
-async function sendPushNotifications(
-  db: any,
-  chatId: number,
-  senderId: string,
-  message: any
-) {
-  try {
-    // Get all participants except sender and muted users
-    const recipients = await db
-      .select({ userId: chatParticipants.userId })
-      .from(chatParticipants)
-      .where(
-        and(
-          eq(chatParticipants.chatId, chatId),
-          ne(chatParticipants.userId, senderId),
-          eq(chatParticipants.isMuted, 0)
-        )
-      );
-
-    if (recipients.length === 0) return;
-
-    // Get their active push tokens
-    const tokens = await db
-      .select()
-      .from(pushTokens)
-      .where(
-        and(
-          inArray(
-            pushTokens.userId,
-            recipients.map((r: any) => r.userId)
-          ),
-          eq(pushTokens.isActive, 1)
-        )
-      );
-
-    if (tokens.length === 0) return;
-
-    // TODO: Send via Expo Push API
-    console.log(`[Push] Would send to ${tokens.length} devices`);
-  } catch (error) {
-    console.error("[Push] Error sending notifications:", error);
-    // Don't throw - push is non-critical
-  }
-}

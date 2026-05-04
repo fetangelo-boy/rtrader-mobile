@@ -1,8 +1,5 @@
 import { Request, Response, Express } from "express";
 import { getServerSupabase } from "../../lib/supabase";
-import { getDb } from "../db";
-import { users, chats, chatParticipants } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
 import crypto from "crypto";
 
 /**
@@ -184,42 +181,33 @@ export function registerAdminRoutes(app: Express) {
 
       console.log(`[Admin] Subscription ${subscriptionId} created for ${email}, expires: ${expiresAt.toISOString()}`);
 
-      // 4. Add user to MySQL users table and all chats
+      // 4. Add user to all Supabase chats as participant
       try {
-        const db = await getDb();
-        if (db) {
-          // Insert user into MySQL users table (openId = Supabase UUID)
-          await db.insert(users).values({
-            openId: userId,
-            name: telegram_name,
-            email,
-            loginMethod: "supabase",
-            role: "user",
-          }).onDuplicateKeyUpdate({ set: { name: telegram_name, email } });
+        const { data: allChats } = await supabase
+          .from("chats")
+          .select("id, type");
 
-          // Get the MySQL user id
-          const [mysqlUser] = await db.select({ id: users.id }).from(users).where(eq(users.openId, userId)).limit(1);
-          const mysqlUserId = mysqlUser?.id;
+        if (allChats && allChats.length > 0) {
+          const participantRows = allChats.map((chat: any) => ({
+            chat_id: chat.id,
+            user_id: userId,
+            role: chat.type === "info_only" ? "subscriber" : "participant",
+          }));
 
-          if (mysqlUserId) {
-            // Get all chats from MySQL
-            const allChats = await db.select({ id: chats.id, chatType: chats.chatType }).from(chats);
-            if (allChats.length) {
-              for (const chat of allChats) {
-                await db.insert(chatParticipants).values({
-                  chatId: chat.id,
-                  userId: String(mysqlUserId),
-                  role: chat.chatType === "info_only" ? "subscriber" : "participant",
-                }).onDuplicateKeyUpdate({ set: { role: chat.chatType === "info_only" ? "subscriber" : "participant" } });
-              }
-              console.log(`[Admin] Added ${email} (MySQL id: ${mysqlUserId}) to ${allChats.length} chats`);
-            } else {
-              console.warn(`[Admin] No chats found in MySQL to add user to`);
-            }
+          const { error: partError } = await supabase
+            .from("chat_participants")
+            .upsert(participantRows, { onConflict: "chat_id,user_id" });
+
+          if (partError) {
+            console.error("[Admin] Failed to add user to chats:", partError.message);
+          } else {
+            console.log(`[Admin] Added ${email} (${userId}) to ${allChats.length} Supabase chats`);
           }
+        } else {
+          console.warn("[Admin] No chats found in Supabase to add user to");
         }
       } catch (dbErr: any) {
-        console.error("[Admin] MySQL user/chat insert error:", dbErr.message);
+        console.error("[Admin] Supabase chat_participants insert error:", dbErr.message);
         // Non-fatal: user and subscription already created
       }
 

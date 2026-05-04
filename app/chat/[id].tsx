@@ -57,7 +57,7 @@ export default function ChatDetailScreen() {
   const scrollViewRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
 
-  const { data: chatInfo } = trpc.chat.getChatInfo.useQuery({ chatId: Number(chatId) });
+  const { data: chatInfo } = trpc.chat.getChatInfo.useQuery({ chatId: String(chatId) });
 
   const utils = trpc.useUtils();
 
@@ -67,7 +67,7 @@ export default function ChatDetailScreen() {
     error: messagesError,
   } = trpc.chat.getMessages.useQuery(
     {
-      chatId: Number(chatId),
+      chatId: String(chatId),
       limit: 50,
       offset: 0,
     },
@@ -93,7 +93,7 @@ export default function ChatDetailScreen() {
         (payload) => {
           const row = payload.new as any;
           // Refetch from tRPC to get author info
-          utils.chat.getMessages.invalidate({ chatId: Number(chatId) });
+          utils.chat.getMessages.invalidate({ chatId: String(chatId) });
           // Optimistically append if it's not from the current user
           // (own messages are already appended in sendMessageMutation.onSuccess)
           const newMsg: Message = {
@@ -200,9 +200,9 @@ export default function ChatDetailScreen() {
 
   const handleSendMessage = () => {
     sendMessageMutation.mutate({
-      chatId: Number(chatId),
+      chatId: String(chatId),
       content: newMessage.trim(),
-      replyToId: replyingTo?.id ? Number(replyingTo.id) : undefined,
+      replyToId: replyingTo?.id ? String(replyingTo.id) : undefined,
     });
   };
 
