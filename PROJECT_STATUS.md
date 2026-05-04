@@ -1,5 +1,5 @@
 # RTrader Mobile — Статус проекта
-> Последнее обновление: **2026-05-04 (сессия 3)**
+> Последнее обновление: **2026-05-04 (сессия 4)**
 > Этот файл — единственный источник правды о состоянии проекта.
 
 ---
@@ -13,7 +13,7 @@
 | **Deep Link схема** | `rtrader://` |
 | **GitHub репо** | `fetangelo-boy/rtrader-mobile` |
 | **Manus Dev URL** | `https://8081-iqbo82wz5ez3zf6ocn4av-401261bf.us2.manus.computer` |
-| **Последний чекпоинт** | `b8cafd77` (2026-05-03) |
+| **Последний чекпоинт** | `b591c7ca` (2026-05-04) |
 
 ### Supabase
 | Параметр | Значение |
@@ -21,14 +21,6 @@
 | **Project ID** | `vfxezndvkaxlimthkeyx` |
 | **URL** | `https://vfxezndvkaxlimthkeyx.supabase.co` |
 | **Anon Key** | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmeGV6bmR2a2F4bGltdGhrZXl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNjcxODEsImV4cCI6MjA5MTk0MzE4MX0.Kt0v47bv258m-pOMymSY2PZeVxw7WI5yItE6wdxddCE` |
-
-### Railway (API-сервер, бот отключён)
-| Параметр | Значение |
-|---|---|
-| **Public URL** | `https://rtrader-server-production.up.railway.app` |
-| **DISABLE_BOT** | `true` — long-polling полностью отключён |
-| **Роль** | Только tRPC API-сервер. Бот НЕ запускается. |
-| **Статус** | ✅ Работает. Скоро будет выведен из эксплуатации. |
 
 ### Telegram Bot
 | Параметр | Значение |
@@ -39,7 +31,7 @@
 | **Режим работы** | **Webhook** → Supabase Edge Function (PROFITKING паттерн) |
 | **Webhook URL** | `https://vfxezndvkaxlimthkeyx.supabase.co/functions/v1/telegram-webhook` |
 | **Webhook Secret** | `rtrader_webhook_secret_2024` |
-| **Статус** | ✅ Работает 24/7 через Supabase Edge Function. Long-polling ОТКЛЮЧЁН. |
+| **Статус** | ✅ Работает 24/7 через Supabase Edge Function. Long-polling ОТКЛЮЧЁН навсегда. |
 
 ---
 
@@ -55,9 +47,7 @@ Supabase PostgreSQL (единственная БД)
 Mobile App (React Native / Expo)
 ```
 
-**Railway** — временный API-сервер (tRPC). Будет выведен из эксплуатации после того, как все клиенты переедут на прямые Supabase-вызовы.
-
-**MySQL** — полностью выведен из активных роутеров. Drizzle-схема осталась как legacy-код, но ни один активный роутер её не использует.
+**MySQL** — полностью выведен. Все активные роутеры переведены на Supabase. Legacy-файлы `admin-trpc.ts` и `requests.ts` удалены.
 
 ---
 
@@ -90,12 +80,11 @@ Mobile App (React Native / Expo)
 | `subscriptions` | Подписки пользователей | ✅ | — |
 | `push_tokens` | Токены push-уведомлений | ✅ | — |
 | `posts` | Посты из Telegram-каналов | ✅ | ✅ |
-
-**MySQL** — больше не используется активными роутерами. Drizzle-схема сохранена как исторический артефакт.
+| `pending_payments` | Выбранный тариф до оплаты (персистентный) | ✅ | — |
 
 ---
 
-## 5. Серверные роутеры — статус миграции
+## 5. Серверные роутеры — статус
 
 | Файл | БД | Статус |
 |---|---|---|
@@ -104,8 +93,8 @@ Mobile App (React Native / Expo)
 | `server/routers/admin.ts` | **Supabase** | ✅ Полностью мигрирован |
 | `server/routers/subscriptions.ts` | **Supabase** | ✅ Полностью мигрирован |
 | `server/routers/account.ts` | **Supabase** | ✅ |
-| `server/routers/admin-trpc.ts` | MySQL (legacy) | ⚠️ Не используется мобильным приложением |
-| `server/routers/requests.ts` | MySQL (legacy) | ⚠️ Не используется мобильным приложением |
+| `server/routers/admin-trpc.ts` | — | ✅ УДАЛЁН 2026-05-04 |
+| `server/routers/requests.ts` | — | ✅ УДАЛЁН 2026-05-04 |
 
 ---
 
@@ -128,12 +117,13 @@ Mobile App (React Native / Expo)
 
 ## 7. Telegram Bot — флоу и команды
 
-**Флоу подписки (через Edge Function):**
+**Флоу подписки (через Edge Function, напрямую в Supabase):**
 1. `/start` → меню тарифов
-2. Выбор тарифа → реквизиты оплаты
+2. Выбор тарифа → реквизиты оплаты → сохраняется в `pending_payments`
 3. Пользователь отправляет чек → уведомление администратору
-4. Администратор: `/approve <telegram_id> <дни>` → создаёт аккаунт в Supabase Auth
+4. Администратор: `/approve <telegram_id> <дни>` → создаёт аккаунт в Supabase Auth + подписка
 5. Бот отправляет deep link `rtrader://login?email=...&password=...`
+6. `pending_payments` запись удаляется
 
 **Тарифы (статические в Edge Function):**
 - 7 дней — 990 ₽
@@ -155,7 +145,6 @@ Mobile App (React Native / Expo)
 - [x] Обнаружен конфликт webhook + long-polling — корневая причина ежедневных сбоев токена
 - [x] Webhook удалён, затем пересоздан правильно
 - [x] Edge Function `telegram-webhook` переписана и задеплоена
-- [x] `DISABLE_BOT=true` установлен на Railway — long-polling отключён навсегда
 - [x] PROFITKING-паттерн достигнут: бот работает через Supabase Edge Function 24/7
 
 ### Сессия 2026-05-04 (сессия 2)
@@ -165,28 +154,32 @@ Mobile App (React Native / Expo)
 - [x] `server/routers/subscriptions.ts` — полностью переписан на Supabase
 - [x] TypeScript: 0 ошибок после всех изменений
 - [x] Запушено на GitHub (commit `651465e`)
-- [x] Новый токен бота `AAG4QfuYoTwC60zbSi-pxVnTjp-1eOLtDzY` установлен в Supabase secrets
+- [x] Новый токен бота установлен в Supabase secrets
 - [x] Webhook пересоздан с новым токеном — работает без ошибок
 
 ### Сессия 2026-05-04 (сессия 3)
 - [x] Исправлены имена secrets: `TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_SECRET` (с префиксом)
 - [x] `pendingPayments` перенесён из in-memory Map в Supabase таблицу `pending_payments`
-- [x] Edge Function: `/approve` работает напрямую через Supabase Auth Admin API (Railway не вызывается)
+- [x] Edge Function: `/approve` работает напрямую через Supabase Auth Admin API
 - [x] Проверен полный флоу: /start → тариф → pending_payments → /approve → подписка → deep link
 - [x] Запушено на GitHub (commit `b4d1926`)
+
+### Сессия 2026-05-04 (сессия 4)
+- [x] Удалены legacy-роутеры `admin-trpc.ts` и `requests.ts` (MySQL, не использовались)
+- [x] Убраны все упоминания Railway из PROJECT_STATUS.md и SKILL.md
+- [x] TypeScript: 0 ошибок после удаления
+- [x] SKILL.md обновлён до версии 5.0
 
 ---
 
 ## 9. Что осталось сделать
 
 ### Следующий приоритет
-- [ ] Добавить бота `@rtrader_mobapp_bot` в VIP Telegram-канал как администратора
-- [ ] Проверить, что посты из канала появляются в таблице `posts` через Edge Function
-- [ ] Создать экран ленты постов в приложении
+- [ ] Протестировать флоу подписки end-to-end на реальном устройстве
+- [ ] Добавить бота `@rtrader_mobapp_bot` в VIP Telegram-канал как администратора (отложено)
+- [ ] Создать экран ленты постов в приложении (отложено)
 
 ### Технический долг (не блокирует работу)
-- [ ] Удалить legacy-роутеры `admin-trpc.ts` и `requests.ts` (MySQL, не используются)
-- [ ] Вывести Railway из эксплуатации (после перехода всех клиентов на прямой Supabase)
 - [ ] SaleBot интеграция (автоматическая проверка банковских переводов)
 - [ ] Push-уведомления: тестирование на реальном устройстве
 
@@ -197,9 +190,9 @@ Mobile App (React Native / Expo)
 | Проблема | Статус |
 |---|---|
 | Токен бота слетал каждый день | ✅ РЕШЕНО — конфликт webhook+polling устранён |
-| MySQL дублировал Supabase | ✅ РЕШЕНО — активные роутеры переведены на Supabase |
+| MySQL дублировал Supabase | ✅ РЕШЕНО — все роутеры переведены на Supabase |
 | Edge Function не была задеплоена | ✅ РЕШЕНО — задеплоена и работает |
-| Long-polling на Railway | ✅ РЕШЕНО — DISABLE_BOT=true |
 | pendingPayments терялись (in-memory) | ✅ РЕШЕНО — хранятся в Supabase `pending_payments` |
-| /approve вызывал Railway | ✅ РЕШЕНО — напрямую через Supabase Auth Admin API |
+| /approve вызывал внешний сервер | ✅ РЕШЕНО — напрямую через Supabase Auth Admin API |
 | Неверные имена secrets в Edge Function | ✅ РЕШЕНО — TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET |
+| Legacy-роутеры с MySQL | ✅ РЕШЕНО — admin-trpc.ts и requests.ts удалены |
