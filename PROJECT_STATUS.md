@@ -169,6 +169,9 @@ Mobile App (React Native / Expo)
 - [x] Убраны все упоминания Railway из PROJECT_STATUS.md и SKILL.md
 - [x] TypeScript: 0 ошибок после удаления
 - [x] SKILL.md обновлён до версии 5.0
+- [x] Исправлена ошибка 401 Unauthorized: Edge Function передеплоена с флагом `--no-verify-jwt`
+- [x] Исправлена ошибка в `/approve`: при продлении подписки теперь генерируется новый пароль и отправляется в deep link
+- [x] SKILL.md обновлён до версии 5.1 (Trap 8 добавлен)
 
 ---
 
@@ -196,3 +199,5 @@ Mobile App (React Native / Expo)
 | /approve вызывал внешний сервер | ✅ РЕШЕНО — напрямую через Supabase Auth Admin API |
 | Неверные имена secrets в Edge Function | ✅ РЕШЕНО — TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET |
 | Legacy-роутеры с MySQL | ✅ РЕШЕНО — admin-trpc.ts и requests.ts удалены |
+| Edge Function 401 (JWT верификация) | ✅ РЕШЕНО — деплой с --no-verify-jwt |
+| /approve без пароля при продлении | ✅ РЕШЕНО — новый пароль генерируется и отправляется в deep link |
