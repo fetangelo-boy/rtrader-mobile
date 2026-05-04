@@ -1,14 +1,19 @@
 /**
  * Telegram Auto-Login Screen
  *
- * Handles the deep link: rtrader://auth/telegram?token=<one_time_token>
+ * Handles the deep link: rtrader://login?token=<one_time_token>
  *
  * Flow:
  * 1. App opens via deep link from Telegram bot after /approve
  * 2. This screen extracts the one-time token from URL params
- * 3. Calls /api/auth/exchange-telegram-token to get a Supabase session
- * 4. Saves session tokens and user info
+ * 3. Calls /api/auth/verify-token to verify token and get Supabase session
+ * 4. Saves session tokens and user info to SecureStore
  * 5. Redirects to /(tabs)/chats
+ *
+ * Security:
+ * - Token is one-time use only (marked as used after verification)
+ * - Token expires in 15 minutes
+ * - Password is never transmitted in the deep link
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -44,7 +49,9 @@ export default function TelegramAuthScreen() {
 
   async function exchangeToken(token: string) {
     try {
-      const response = await fetch(`${getApiBaseUrl()}/api/auth/exchange-telegram-token`, {
+      console.log("[TelegramAuth] Verifying token:", token);
+      
+      const response = await fetch(`${getApiBaseUrl()}/api/auth/verify-token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token }),
@@ -54,30 +61,37 @@ export default function TelegramAuthScreen() {
 
       if (!response.ok || !data.success) {
         const msg = data.error || "Не удалось войти. Попробуйте снова.";
-        console.error("[TelegramAuth] Exchange failed:", msg);
+        console.error("[TelegramAuth] Token verification failed:", msg);
         setStatus("error");
         setErrorMsg(msg);
         return;
       }
 
-      // Save session tokens
-      await SecureStore.setItemAsync(SESSION_TOKEN_KEY, data.access_token);
-      if (data.refresh_token) {
-        await SecureStore.setItemAsync("app_refresh_token", data.refresh_token);
+      if (!data.session) {
+        console.error("[TelegramAuth] No session in response");
+        setStatus("error");
+        setErrorMsg("Ошибка: сессия не получена. Попробуйте снова.");
+        return;
+      }
+
+      // Save session tokens from Supabase
+      await SecureStore.setItemAsync(SESSION_TOKEN_KEY, data.session.access_token);
+      if (data.session.refresh_token) {
+        await SecureStore.setItemAsync("app_refresh_token", data.session.refresh_token);
       }
 
       // Save user info
       const userInfo = {
-        id: data.user.id,
-        openId: data.user.id,
-        name: data.user.name,
-        email: data.user.email,
+        id: data.session.user.id,
+        openId: data.session.user.id,
+        name: data.session.user.email?.split("@")[0] || "User",
+        email: data.session.user.email,
         loginMethod: "telegram",
         lastSignedIn: new Date().toISOString(),
       };
       await SecureStore.setItemAsync(USER_INFO_KEY, JSON.stringify(userInfo));
 
-      console.log("[TelegramAuth] Login successful for", data.user.email);
+      console.log("[TelegramAuth] Login successful for", data.session.user.email);
       setStatus("success");
 
       // Small delay so user sees the success state

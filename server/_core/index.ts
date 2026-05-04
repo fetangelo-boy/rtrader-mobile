@@ -7,6 +7,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerAdminRoutes } from "../routers/admin";
 import { initializeTelegramBot, shutdownTelegramBot } from "../routers/telegram-bot";
+import authRoutes from "../routes/auth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import type { Server } from "http";
@@ -82,6 +83,7 @@ async function startServer() {
 
   registerOAuthRoutes(app);
   registerAdminRoutes(app);
+  app.use("/api/auth", authRoutes);
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });

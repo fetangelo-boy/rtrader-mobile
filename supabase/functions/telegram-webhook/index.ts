@@ -176,13 +176,36 @@ async function handleReceipt(
 
 // ─── Approve/Reject (direct Supabase, no Railway) ────────────────────────────
 
+// Generate random password for user account (not transmitted in deep link)
 function generatePassword(length: number): string {
-  const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%^&*";
   let result = "";
   for (let i = 0; i < length; i++) {
     result += chars[Math.floor(Math.random() * chars.length)];
   }
   return result;
+}
+
+// Generate one-time authentication token (expires in 15 minutes)
+async function generateAuthToken(
+  supabase: ReturnType<typeof createClient>,
+  userId: string
+): Promise<string> {
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+  const { data, error } = await supabase
+    .from("auth_tokens")
+    .insert({
+      user_id: userId,
+      expires_at: expiresAt.toISOString(),
+    })
+    .select("token")
+    .single();
+
+  if (error || !data?.token) {
+    throw new Error(`Failed to generate auth token: ${error?.message || "unknown"}`);
+  }
+
+  return data.token;
 }
 
 async function handleApprove(
@@ -224,30 +247,27 @@ async function handleApprove(
       (u: any) => u.user_metadata?.telegram_id === String(targetTelegramId)
     );
 
-    let email: string;
+    let userId: string;
     let deepLink: string;
 
     if (existingUser) {
-      // Renew subscription — generate new password so deep link works
-      email = existingUser.email || `tg${targetTelegramId}@rtrader.app`;
-      const renewPassword = generatePassword(10);
-
-      await supabase.auth.admin.updateUserById(existingUser.id, { password: renewPassword });
-
+      // Renew subscription
+      userId = existingUser.id;
       await supabase.from("subscriptions").upsert({
-        user_id: existingUser.id,
+        user_id: userId,
         plan: planId,
         status: "active",
         started_at: now.toISOString(),
         expires_at: expiresAt.toISOString(),
         updated_at: now.toISOString(),
       }, { onConflict: "user_id" });
-      deepLink = `https://rtradermob-gjsezgkc.manus.space/auth/open?email=${encodeURIComponent(email)}&password=${encodeURIComponent(renewPassword)}`;
-      await sendMsg(token, chatId, `✅ Подписка продлена для ${targetTelegramId}\nEmail: ${email}\nДо: ${expiresAt.toLocaleDateString("ru-RU")}`);
+      const authToken = await generateAuthToken(supabase, userId);
+      deepLink = `rtrader://login?token=${authToken}`;
+      await sendMsg(token, chatId, `✅ Подписка продлена для ${targetTelegramId}\nДо: ${expiresAt.toLocaleDateString("ru-RU")}`);
     } else {
       // Create new user
-      email = `tg${targetTelegramId}@rtrader.app`;
-      const password = generatePassword(10);
+      const email = `tg${targetTelegramId}@rtrader.app`;
+      const password = generatePassword(12);
 
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email,
@@ -261,7 +281,7 @@ async function handleApprove(
         return;
       }
 
-      const userId = authData.user.id;
+      userId = authData.user.id;
       await supabase.from("profiles").upsert({ id: userId, username: `user_${targetTelegramId}` });
       await supabase.from("subscriptions").insert({
         user_id: userId,
@@ -273,25 +293,29 @@ async function handleApprove(
         updated_at: now.toISOString(),
       });
 
-      deepLink = `https://rtradermob-gjsezgkc.manus.space/auth/open?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
-      await sendMsg(token, chatId, `✅ Аккаунт создан для ${targetTelegramId}\nEmail: ${email}\nДо: ${expiresAt.toLocaleDateString("ru-RU")}`);
+      const authToken = await generateAuthToken(supabase, userId);
+      deepLink = `rtrader://login?token=${authToken}`;
+      await sendMsg(token, chatId, `✅ Аккаунт создан для ${targetTelegramId}\nДо: ${expiresAt.toLocaleDateString("ru-RU")}`);
     }
 
     // Delete pending payment
     await deletePendingPayment(supabase, targetTelegramId);
 
-    // Send deep link to user
+    // Send one-time token link to user
     await sendMsg(token, targetTelegramId,
       `🎉 <b>Ваша подписка активирована!</b>\n\n` +
       `Нажмите кнопку ниже для входа в приложение RTrader:`,
       { reply_markup: { inline_keyboard: [[{ text: "🚀 Войти в приложение", url: deepLink }]] } }
     );
 
+    console.log(`[Bot] Auth token sent to user ${targetTelegramId}`);
+
   } catch (e: any) {
     console.error("[Bot] approve error:", e);
     await sendMsg(token, chatId, `❌ Ошибка: ${e.message}`);
   }
 }
+
 
 async function handleReject(
   token: string,

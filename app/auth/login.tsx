@@ -18,30 +18,31 @@ import { SESSION_TOKEN_KEY, USER_INFO_KEY } from "@/constants/oauth";
 import { signInWithEmail } from "@/lib/supabase-auth";
 
 const TELEGRAM_BOT_URL = "https://t.me/rtrader_mobapp_bot?start=app";
+
 const REFRESH_TOKEN_KEY = "app_refresh_token";
 
 export default function LoginScreen() {
   const colors = useColors();
   const router = useRouter();
-  const params = useLocalSearchParams();
+  const params = useLocalSearchParams<{ token?: string }>();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Handle deep link: rtrader://login?email=...&password=...
+  // Note: Deep link authentication now uses rtrader://login?token=...
+  // which is handled by app/auth/telegram.tsx
+  // This screen is for manual email+password login only
+
   useEffect(() => {
-    if (params.email && params.password) {
-      const decodedEmail = decodeURIComponent(String(params.email));
-      const decodedPassword = decodeURIComponent(String(params.password));
-      setEmail(decodedEmail);
-      setPassword(decodedPassword);
-      // Auto-login after a short delay to ensure state is set
-      setTimeout(() => {
-        handleLoginWithCredentials(decodedEmail, decodedPassword);
-      }, 300);
+    // If token param is present, redirect to telegram auth screen
+    if (params.token) {
+      router.replace({
+        pathname: "/auth/telegram",
+        params: { token: params.token },
+      });
     }
-  }, [params.email, params.password]);
+  }, [params.token]);
 
   const handleLoginWithCredentials = async (emailVal: string, passwordVal: string) => {
     if (!emailVal.trim() || !passwordVal.trim()) {
