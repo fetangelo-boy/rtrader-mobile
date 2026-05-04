@@ -228,8 +228,12 @@ async function handleApprove(
     let deepLink: string;
 
     if (existingUser) {
-      // Renew subscription
+      // Renew subscription — generate new password so deep link works
       email = existingUser.email || `tg${targetTelegramId}@rtrader.app`;
+      const renewPassword = generatePassword(10);
+
+      await supabase.auth.admin.updateUserById(existingUser.id, { password: renewPassword });
+
       await supabase.from("subscriptions").upsert({
         user_id: existingUser.id,
         plan: planId,
@@ -238,7 +242,7 @@ async function handleApprove(
         expires_at: expiresAt.toISOString(),
         updated_at: now.toISOString(),
       }, { onConflict: "user_id" });
-      deepLink = `rtrader://login?email=${encodeURIComponent(email)}`;
+      deepLink = `rtrader://login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(renewPassword)}`;
       await sendMsg(token, chatId, `✅ Подписка продлена для ${targetTelegramId}\nEmail: ${email}\nДо: ${expiresAt.toLocaleDateString("ru-RU")}`);
     } else {
       // Create new user
