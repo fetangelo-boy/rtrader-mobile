@@ -1,5 +1,5 @@
 # RTrader Mobile — Статус проекта
-> Последнее обновление: 2026-05-03  
+> Последнее обновление: 2026-05-04  
 > Этот файл — единственный источник правды о состоянии проекта. Обновлять при каждом значимом изменении.
 
 ---
@@ -33,15 +33,18 @@
 | **Service ID** | `90c6b008-d42c-48eb-8bb1-1c58d366a4f8` |
 | **Account** | `fetangelo@gmail.com` (Dmitriy) |
 | **Plan** | Trial (29 дней осталось на 2026-05-03) |
-| **Status** | ⚠️ Создан, но деплой НЕ завершён — бот работает в Manus sandbox |
+| **DISABLE_BOT** | `true` — long-polling отключён, бот работает через webhook |
+| **Status** | ✅ Работает. Бот НЕ запускает long-polling (DISABLE_BOT=true) |
 
 ### Telegram Bot
 | Параметр | Значение |
 |---|---|
 | **Username** | `@rtrader_mobapp_bot` |
 | **Admin Telegram ID** | `716116024` (числовой) + `rhodes4ever` (username) |
-| **Режим работы** | Long polling (`polling: false` в коде, запускается через `initializeTelegramBot()`) |
-| **Статус** | Работает в Manus sandbox (засыпает при неактивности) |
+| **Режим работы** | **Webhook** → Supabase Edge Function (PROFITKING паттерн) |
+| **Webhook URL** | `https://vfxezndvkaxlimthkeyx.supabase.co/functions/v1/telegram-webhook` |
+| **Webhook Secret** | `rtrader_webhook_secret_2026` |
+| **Статус** | ✅ Работает 24/7 через Supabase Edge Function. Long-polling ОТКЛЮЧЁН. |
 
 ---
 
@@ -49,12 +52,16 @@
 
 ```
 Telegram Bot (@rtrader_mobapp_bot)
-    ↓ long polling / webhook
-Express Server (Railway)
-    ↓ tRPC + REST
+    ↓ Webhook (PROFITKING паттерн)
+Supabase Edge Function (telegram-webhook)
+    ↓ команды бота + посты канала
 Supabase PostgreSQL (основная БД)
     ↓ Realtime
 Mobile App (React Native / Expo)
+
+Railway Express Server (API only, DISABLE_BOT=true)
+    ↓ tRPC + REST + approve-subscription endpoint
+Supabase PostgreSQL
 ```
 
 **Принцип:** Supabase-first. MySQL используется как legacy-слой для чатов/подписок (технический долг, не блокирует работу).
