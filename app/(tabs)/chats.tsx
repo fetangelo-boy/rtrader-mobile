@@ -4,7 +4,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { cn } from "@/lib/utils";
-import { trpc } from "@/lib/trpc";
+import { supabase } from "@/lib/supabase-client";
 import { useSubscriptionGuard } from "@/hooks/use-subscription-guard";
 import { SubscriptionExpired } from "@/components/subscription-expired";
 
@@ -28,60 +28,64 @@ export default function ChatsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [muteStatus, setMuteStatus] = useState<Record<string, boolean>>({});
 
-  // Fetch chats list with timeout
-  const { data: chatsList, isLoading: chatsLoading, error: queryError } = trpc.chat.list.useQuery(undefined, {
-    retry: 1,
-    retryDelay: 1000,
-  });
-
-  // Debug logging
+  // Fetch chats list directly from Supabase
   useEffect(() => {
-    console.log('[ChatsScreen] Query state:', { chatsLoading, queryError, hasData: !!chatsList });
-    if (queryError) {
-      console.error('[ChatsScreen] Query error:', queryError);
-    }
-  }, [chatsLoading, queryError, chatsList]);
+    const fetchChats = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  // Mute settings are loaded lazily - default to false (unmuted)
-  useEffect(() => {
-    if (queryError) {
-      console.error('[ChatsScreen] Setting error state:', queryError);
-      setError('Ошибка загрузки чатов. Проверьте интернет соединение.');
-      setLoading(false);
-      return;
-    }
-    
-    if (chatsList) {
-      console.log('[ChatsScreen] Formatting chats:', chatsList.length);
-      const formattedChats: ChatItem[] = chatsList.map((chat: any) => ({
-        id: chat.id,
-        title: chat.name || chat.title || chat.id,
-        type: chat.type || 'interactive',
-        created_at: chat.created_at,
-        isMuted: muteStatus[chat.id] || false,
-        unreadCount: 0,
-      }));
-      console.log('[ChatsScreen] Chats loaded:', formattedChats.length);
-      setChats(formattedChats);
-      setLoading(false);
-      setError(null);
-    }
-  }, [chatsList, muteStatus, queryError]);
-
-  // Add timeout for loading state
-  useEffect(() => {
-    if (loading && chatsLoading) {
-      console.log('[ChatsScreen] Starting timeout for chat loading...');
-      const timeout = setTimeout(() => {
-        if (chatsLoading) {
-          console.error('[ChatsScreen] Chat loading timeout after 10 seconds');
-          setError('Загрузка чатов занимает слишком долго. Попробуйте перезагрузить приложение.');
-          setLoading(false);
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) {
+          throw new Error('Not authenticated');
         }
-      }, 10000);
-      return () => clearTimeout(timeout);
-    }
-  }, [loading, chatsLoading]);
+
+        // Get user's chats from chat_participants
+        const { data: participants, error: participantsError } = await supabase
+          .from('chat_participants')
+          .select('chat_id')
+          .eq('user_id', user.id);
+
+        if (participantsError) throw participantsError;
+
+        if (!participants || participants.length === 0) {
+          setChats([]);
+          setLoading(false);
+          return;
+        }
+
+        const chatIds = participants.map(p => p.chat_id);
+
+        // Get chat details
+        const { data: chatsList, error: chatsError } = await supabase
+          .from('chats')
+          .select('id, name, title, type, created_at')
+          .in('id', chatIds);
+
+        if (chatsError) throw chatsError;
+
+        const formattedChats: ChatItem[] = (chatsList || []).map((chat: any) => ({
+          id: chat.id,
+          title: chat.name || chat.title || chat.id,
+          type: chat.type || 'interactive',
+          created_at: chat.created_at,
+          isMuted: muteStatus[chat.id] || false,
+          unreadCount: 0,
+        }));
+
+        console.log('[ChatsScreen] Chats loaded:', formattedChats.length);
+        setChats(formattedChats);
+        setLoading(false);
+      } catch (err: any) {
+        console.error('[ChatsScreen] Error loading chats:', err);
+        setError('Ошибка загрузки чатов. Проверьте интернет соединение.');
+        setLoading(false);
+      }
+    };
+
+    fetchChats();
+  }, [muteStatus]);
 
   // Log initial mount
   useEffect(() => {
@@ -186,8 +190,6 @@ export default function ChatsScreen() {
             console.log('[ChatsScreen] User clicked retry');
             setError(null);
             setLoading(true);
-            // Invalidate and refetch the query
-            trpc.useUtils().chat.list.invalidate();
           }}
           style={{ backgroundColor: colors.primary }}
           className="px-6 py-3 rounded-lg"

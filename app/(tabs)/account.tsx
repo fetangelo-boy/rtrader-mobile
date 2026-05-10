@@ -4,7 +4,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { VersionInfo } from "@/components/version-info";
 import { useColors } from "@/hooks/use-colors";
 import { cn } from "@/lib/utils";
-import { trpc } from "@/lib/trpc";
+import { supabase } from "@/lib/supabase-client";
 import { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
@@ -69,12 +69,14 @@ const getPlanLabel = (plan: string) => {
 function ProfileCard({
   colors,
   onEdit,
+  profile,
+  isLoading,
 }: {
   colors: ReturnType<typeof useColors>;
   onEdit: () => void;
+  profile: any;
+  isLoading: boolean;
 }) {
-  const { data: profile, isLoading } = trpc.profile.getProfile.useQuery();
-
   const displayName = profile?.username || profile?.email?.split("@")[0] || "Пользователь";
   const initials = displayName
     .split(" ")
@@ -208,18 +210,58 @@ const profileStyles = StyleSheet.create({
 export default function AccountScreen() {
   const colors = useColors();
   const router = useRouter();
+  const [profile, setProfile] = useState<any>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch subscription status
-  const { data: subData, isLoading: subLoading } = trpc.account.getSubscription.useQuery();
-
+  // Fetch profile and subscription data from Supabase
   useEffect(() => {
-    if (subData) {
-      setSubscription(subData);
-      setLoading(false);
-    }
-  }, [subData]);
+    const fetchData = async () => {
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) throw userError;
+
+        // Set profile from auth user
+        setProfile({
+          email: user.email,
+          username: user.user_metadata?.username || user.email?.split("@")[0],
+          avatar_url: user.user_metadata?.avatar_url,
+        });
+
+        // Fetch subscription
+        const { data: subData, error: subError } = await supabase
+          .from('subscriptions')
+          .select('id, plan, status, current_period_end, created_at')
+          .eq('user_id', user.id)
+          .single();
+
+        if (subError && subError.code !== 'PGRST116') {
+          // PGRST116 means no rows returned, which is fine
+          throw subError;
+        }
+
+        if (subData) {
+          setSubscription(subData);
+        } else {
+          // Default to free plan if no subscription
+          setSubscription({
+            id: 'default',
+            plan: 'free',
+            status: 'active',
+            current_period_end: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+            created_at: new Date().toISOString(),
+          });
+        }
+
+        setLoading(false);
+      } catch (err) {
+        console.error('[AccountScreen] Error loading data:', err);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleSupport = () => {
     Linking.openURL("https://t.me/rhodes4ever").catch(() => {
@@ -273,7 +315,7 @@ export default function AccountScreen() {
     });
   };
 
-  if (loading || subLoading) {
+  if (loading) {
     return (
       <ScreenContainer className="items-center justify-center">
         <ActivityIndicator size="large" color={colors.primary} />
@@ -291,7 +333,7 @@ export default function AccountScreen() {
         </View>
 
         {/* Профиль пользователя */}
-        <ProfileCard colors={colors} onEdit={() => router.push("/profile")} />
+        <ProfileCard colors={colors} onEdit={() => router.push("/profile")} profile={profile} isLoading={loading} />
 
         {/* Статус подписки */}
         {subscription && (
