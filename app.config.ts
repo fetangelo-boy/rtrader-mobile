@@ -53,7 +53,7 @@ const config: ExpoConfig = {
   owner: "evko1946",
   extra: {
     eas: {
-      projectId: "rtrader-mobile-build",
+      projectId: "",
     },
     supabaseUrl: env.supabaseUrl,
     supabaseAnonKey: env.supabaseAnonKey,
