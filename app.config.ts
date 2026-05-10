@@ -53,7 +53,7 @@ const config: ExpoConfig = {
   owner: "evko1946",
   extra: {
     eas: {
-      projectId: "",
+      projectId: "ce28f86e-b240-4163-af3a-35788c6ea176",
     },
     supabaseUrl: env.supabaseUrl,
     supabaseAnonKey: env.supabaseAnonKey,
