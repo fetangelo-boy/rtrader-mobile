@@ -50,10 +50,10 @@ const config: ExpoConfig = {
   scheme: "rtrader",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
-  owner: "fedortaneev",
+  owner: "evko1946",
   extra: {
     eas: {
-      projectId: "9c73e93b-8f34-4e91-98c1-c05d180fa8dd",
+      projectId: "rtrader-mobile-build",
     },
     supabaseUrl: env.supabaseUrl,
     supabaseAnonKey: env.supabaseAnonKey,
