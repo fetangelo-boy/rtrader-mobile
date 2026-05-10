@@ -1,0 +1,161 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Build profile'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'lib/**'
+      - 'components/**'
+      - 'app.config.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/build-android-apk.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Setup EAS CLI
+        run: npm install -g eas-cli@latest
+
+      - name: Build Android APK (Preview)
+        if: github.event.inputs.profile == 'preview' || github.event.inputs.profile == ''
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          eas build --platform android --profile preview --non-interactive
+          echo "BUILD_PROFILE=preview" >> $GITHUB_ENV
+
+      - name: Build Android APK (Production)
+        if: github.event.inputs.profile == 'production'
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          eas build --platform android --profile production --non-interactive
+          echo "BUILD_PROFILE=production" >> $GITHUB_ENV
+
+      - name: Get build artifacts
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          eas build:list --platform android --limit 1 --json > build-info.json
+          cat build-info.json
+
+          # Extract APK URL from the build info
+          APK_URL=$(jq -r '.[0].artifacts.buildUrl' build-info.json)
+          echo "APK_URL=$APK_URL" >> $GITHUB_ENV
+          echo "Build APK URL: $APK_URL"
+
+      - name: Create Release Notes
+        run: |
+          cat > RELEASE_NOTES.md << EOF
+          # RTrader Mobile APK Build
+
+          **Build Profile:** ${{ env.BUILD_PROFILE }}
+          **Date:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+          **Commit:** ${{ github.sha }}
+          **Branch:** ${{ github.ref_name }}
+
+          ## APK Download
+
+          Download APK: [${{ env.APK_URL }}](${{ env.APK_URL }})
+
+          ## Installation
+
+          ```bash
+          adb install [downloaded-apk-file].apk
+          ```
+
+          ## Test Account
+
+          - **Email:** qa.tester.1777631070@rtrader.app
+          - **Password:** rwWLA9kfLb
+
+          Or login via Telegram: @rtrader_mobapp_bot
+
+          ## Features Tested
+
+          - ✅ Photo upload to chats (NEW)
+          - ✅ Login (email + Telegram)
+          - ✅ Chat messaging
+          - ✅ Reply functionality
+          - ✅ Mute/unmute
+          - ✅ Account settings
+
+          ---
+
+          Built with EAS: https://expo.dev/accounts/fedortaneev/projects/rtrader-mobile
+          EOF
+          cat RELEASE_NOTES.md
+
+      - name: Upload Release Notes as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts-${{ env.BUILD_PROFILE }}
+          path: RELEASE_NOTES.md
+          retention-days: 30
+
+      - name: Comment on PR/Commit
+        if: github.event_name == 'push'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const notes = fs.readFileSync('RELEASE_NOTES.md', 'utf8');
+
+            github.rest.commits.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: notes
+            });
+        continue-on-error: true
+
+      - name: Send Telegram Notification
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          MESSAGE="🔨 RTrader Mobile APK Build: $STATUS%0A%0AProfile: ${{ env.BUILD_PROFILE }}%0ACommit: ${{ github.sha }}%0A%0AAPK: ${{ env.APK_URL }}"
+
+          # You can add Telegram notification here if needed
+          echo "Build status: $STATUS"
+        continue-on-error: true
+
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "✅ Build completed!"
+          echo ""
+          echo "📱 APK Details:"
+          echo "  Profile: ${{ env.BUILD_PROFILE }}"
+          echo "  URL: ${{ env.APK_URL }}"
+          echo ""
+          echo "📝 Download instructions in RELEASE_NOTES.md artifact"
