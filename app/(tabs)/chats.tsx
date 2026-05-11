@@ -184,7 +184,6 @@ export default function ChatsScreen() {
         <Text className="text-error text-center mb-4">⚠️</Text>
         <Text className="text-foreground text-center font-semibold mb-2">Ошибка</Text>
         <Text className="text-muted text-center mb-6">{error}</Text>
-        <Text className="text-xs text-muted text-center mb-4 px-4">Debug: {queryError?.message || 'Unknown error'}</Text>
         <Pressable
           onPress={() => {
             console.log('[ChatsScreen] User clicked retry');
@@ -200,7 +199,7 @@ export default function ChatsScreen() {
     );
   }
 
-  if (loading || chatsLoading) {
+  if (loading) {
     return (
       <ScreenContainer className="items-center justify-center">
         <ActivityIndicator size="large" color={colors.primary} />
